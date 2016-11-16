@@ -4,12 +4,12 @@
 PortSystem          1.0
 PortGroup           qt5 1.0
 set depends_lib_backup \
-                ${depends_lib}
+                    ${depends_lib}
 PortGroup           python 1.0
 
 name                py-pyqt5
 version             5.6
-revbump_for_version 1 5.6
+revision            1
 categories-append   devel
 platforms           darwin
 maintainers         mmoll openmaintainer
@@ -53,15 +53,6 @@ if {![info exists qt5.depends_component]} {
                 set portname "${qt5main}-${comp}"
                 depends_lib-append port:${portname}
             }
-        }
-    }
-    proc revbump_for_version {r v {p 0}} {
-        global version revision subport os.platform
-        if {${p} eq 0 || ${os.platform} eq ${p}} {
-            if {[vercmp ${version} ${v}] > 0} {
-                return -code error "remove revbump (revision ${r}) for ${subport}"
-            }
-            uplevel set revision ${r}
         }
     }
 }
