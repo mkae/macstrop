@@ -1,0 +1,18 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+# $Id$
+# Copyright (c) 2015, 2016 R.J.V. Bertin
+
+PortSystem          1.0
+
+set kf5.project     kdepimlibs
+set kf5.virtualPath applications
+PortGroup           kf5 1.1
+
+maintainers         gmail.com:rjvbertin mk openmaintainer
+
+use_xz              yes
+
+description         kdepimlibs
+long_description    kdepimlibs
+checksums           rmd160  bf0af951c029e8b87558abcdd673192ed7f3a3b9 \
+                    sha256  9c4249fa25cb0e9347b4c0d9a9280d21dd22b480082bea7e31c23dcbc503a229

@@ -1,0 +1,20 @@
+--- extra/kipi-plugins//orig.CMakeLists.txt	2015-10-13 23:58:20.000000000 +0200
++++ extra/kipi-plugins//CMakeLists.txt	2016-01-25 14:45:05.000000000 +0100
+@@ -138,7 +138,7 @@
+ 
+     # -- check the libkvkontakte version -----------------------------------------------------------------
+ 
+-    if (NOT DIGIKAMSC_COMPILE_LIBKVKONTAKTE)
++#    if (NOT DIGIKAMSC_COMPILE_LIBKVKONTAKTE)
+         set(LIBKVKONTAKTE_MIN_VERSION "4.12.0")
+ 
+         if(LIBKVKONTAKTE_VERSION)
+@@ -154,7 +154,7 @@
+             set(LIBKVKONTAKTE_FOUND FALSE)
+ 
+         endif()
+-    endif()
++#    endif()
+ 
+     # -- X11 check, LINUX Only -------------------------------------------------------------------------
+ 
