@@ -1,47 +1,26 @@
 # $Id: Portfile 124584 2014-08-26 05:15:01Z devans@macports.org $
 
 PortSystem 1.0
-PortGroup  cmake 1.1
+PortGroup        cmake 1.1
 
 name             exiv2
 version          0.25
-# fetch.type       svn
+revision         1
 
 homepage         http://www.exiv2.org/
 description      EXIF and IPTC metadata manipulation library and tools
 categories       graphics
-platforms        darwin
+platforms        darwin linux
 license          GPL-2+
 maintainers      vafer.org:tcurdt openmaintainer
 
 master_sites     http://www.exiv2.org/
 
-subport ${name}-devel {
-    fetch.type  svn
-    svn.revision \
-                4344
-    conflicts-append \
-                ${name}
-}
+checksums        rmd160  2f43f8737dad9ffd7d5759ef4dd9688658125794 \
+                 sha256  c80bfc778a15fdb06f71265db2c3d49d8493c382e516cb99b8c9f9cbde36efa4
 
-if {${fetch.type} eq "svn"} {
-    depends_fetch-append \
-                        port:subversion
-    if {[file exists ${filespath}/${name}-svn/.svn]} {
-        svn.url         ${filespath}/${name}-svn
-        distname        ${name}-svn
-    } else {
-        svn.url         svn://dev.exiv2.org/svn/trunk
-        distname        trunk
-    }
-} else {
-    checksums           rmd160  2f43f8737dad9ffd7d5759ef4dd9688658125794 \
-                        sha256  c80bfc778a15fdb06f71265db2c3d49d8493c382e516cb99b8c9f9cbde36efa4
-    conflicts-append    ${name}-devel
-}
-
-long_description Exiv2 comprises of a C++ library and a command line utility \
-                 which allows you to manipulate EXIF and IPTC image metadata.
+long_description Exiv2 is comprised of a C++ library and a command line utility \
+                 which allow the manipulation of EXIF and IPTC image metadata.
 
 depends_lib     port:expat \
                 port:gettext \
@@ -53,12 +32,14 @@ platform darwin {
                 port:libssh
 }
 
-cmake.out_of_source     yes
-configure.args-append   -DEXIV2_ENABLE_WEBREADY:BOOL=ON
+configure.args-append \
+                -DEXIV2_ENABLE_WEBREADY:BOOL=ON
 
 variant video description {include support for reading video file metadata} {
-    patchfiles-append       patch-deactivate-QT-userdata.diff
-    configure.args-append   -DEXIV2_ENABLE_VIDEO:BOOL=ON
+    patchfiles-append \
+                patch-deactivate-QT-userdata.diff
+    configure.args-append \
+                -DEXIV2_ENABLE_VIDEO:BOOL=ON
 }
 default_variants +video
 
