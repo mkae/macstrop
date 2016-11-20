@@ -101,7 +101,7 @@ if {![info exists kf5.version]} {
 if {![ info exists kf5.release ]} {
     set kf5.release     16.08.2
     set kf5.latest_release \
-                        16.08.2
+                        16.08.3
 }
 
 # KF5 Plasma version
@@ -227,51 +227,64 @@ variant docs description {build and install the API documentation, for use with 
     configure.args-delete \
                         -DBUILD_doc=OFF \
                         -DBUILD_docs=OFF
-    if {${subport} ne "kf5-kapidox"} {
+    if {${subport} ne "kf5-kapidox" && ${subport} ne "kf5-kapidox-devel"} {
         if {![info exists kf5.framework]} {
             kf5.depends_build_frameworks \
                         kdoctools
         }
         if {[info exists kf5.allow_docs_generation] && ${kf5.allow_docs_generation}} {
-            kf5.depends_build_frameworks \
+            if {[info exists kf5.framework]} {
+                # KF5 frameworks are more or less guaranteed to have a metainfo.yaml file
+                # which is required for newer kapidox versions. We could check for
+                # the existence of that file, but that would mean depending on both
+                # versions of the framework.
+                kf5.depends_build_frameworks \
                         kapidox
-            post-destroot {
-                ui_msg "--->  Generating documentation for ${subport}"
+            } else {
+                # other software will be processed by an older KApiDox version,
+                # installed under the name kf5-kgenapidox
+                kf5.depends_build_frameworks \
+                        kgenapidox
+            }
+            post-build {
+                ui_msg "--->  Generating documentation for ${subport} (this can take a while)"
                 # generate the documentation, working from ${build.dir}
-                xinstall -m 755 -d ${destroot}${kf5.docs_dir}
+                file delete -force ${workpath}/apidocs
+                xinstall -m 755 -d ${workpath}/apidocs
                 # this appears to be necessary, sometimes:
-                system "chmod 755 ${destroot}${kf5.docs_dir}"
-                if {[file exists ${prefix}/bin/kgenapidox]} {
+                system "chmod 755 ${workpath}/apidocs"
+                if {[info exists kf5.framework]} {
+                    if {[catch {system -W ${build.dir} "kapidox_generate --qhp --searchengine --api-searchbox \
+                        --qtdoc-dir ${qt_docs_dir} --qhelpgenerator ${qt_bins_dir}/qhelpgenerator ${worksrcpath}"} result context]} {
+                        ui_msg "Failure generating documentation: ${result}"
+                    }
+                    # after creating the destination, copy all generated qch documentation to it
+                    foreach doc [glob -nocomplain ${build.dir}/frameworks/*/qch/*.qch ${build.dir}/*/qch/*.qch] {
+                        if {[file tail ${doc}] ne "None.qch"} {
+                            xinstall -m 644 ${doc} ${workpath}/apidocs/
+                        }
+                    }
+                    file delete -force ${build.dir}/${kf5.framework}-${version}
+                } else {
                     system -W ${build.dir} "kgenapidox --qhp --searchengine --api-searchbox \
                         --qtdoc-dir ${qt_docs_dir} --kdedoc-dir ${kf5.docs_dir} \
                         --qhelpgenerator ${qt_bins_dir}/qhelpgenerator ${worksrcpath}"
                     # after creating the destination, copy all generated qch documentation to it
                     foreach doc [glob -nocomplain ${build.dir}/apidocs/qch/*.qch] {
-                        if {${doc} ne "${build.dir}/apidocs/qch/None.qch"} {
-                            xinstall -m 644 ${doc} ${destroot}${kf5.docs_dir}
-                        }
-                    }
-                } else {
-                    if {[info exists kf5.framework]} {
-                        if {[catch {system -W ${build.dir} "kapidox_generate --qhp --searchengine --api-searchbox \
-                            --qtdoc-dir ${qt_docs_dir} --qhelpgenerator ${qt_bins_dir}/qhelpgenerator ${worksrcpath}"} result context]} {
-                            ui_msg "Failure generating documentation: ${result}"
-                        }
-                    } else {
-                        if {[catch {system -W ${build.dir} "kapidox_generate --qhp --searchengine \
-                            --qtdoc-dir ${qt_docs_dir} --qhelpgenerator ${qt_bins_dir}/qhelpgenerator ${worksrcpath}"} result context]} {
-                            ui_msg "Failure generating documentation: ${result}"
-                        }
-                    }
-                    # after creating the destination, copy all generated qch documentation to it
-                    foreach doc [glob -nocomplain ${build.dir}/frameworks/*/qch/*.qch] {
                         if {[file tail ${doc}] ne "None.qch"} {
-                            xinstall -m 644 ${doc} ${destroot}${kf5.docs_dir}
+                            xinstall -m 644 ${doc} ${workpath}/apidocs/
                         }
                     }
+                    file delete -force ${build.dir}/apidocs
                 }
-                # cleanup
-                file delete -force ${build.dir}/apidocs
+            }
+            post-destroot {
+                xinstall -m 755 -d ${destroot}${kf5.docs_dir}
+                # this appears to be necessary, sometimes:
+                system "chmod 755 ${destroot}${kf5.docs_dir}"
+                foreach doc [glob -nocomplain ${workpath}/apidocs/*.qch] {
+                    xinstall -m 644 ${doc} ${destroot}${kf5.docs_dir}
+                }
             }
         }
     }
@@ -600,20 +613,12 @@ proc kf5.check_qspXDG {name} {
 
 
 # create a wrapper script in ${prefix}/bin for an application bundle in kf5.applications_dir
-set kf5.wrapper_env_additions ""
+options kf5.wrapper_env_additions
+default kf5.wrapper_env_additions ""
 proc kf5.add_app_wrapper {wrappername {bundlename ""} {bundleexec ""}} {
-    global kf5.applications_dir destroot prefix os.platform kf5.wrapper_env_additions subport
-    system "echo \"#!/bin/sh\n\
-        if \[ -r ~/.kf5.env \] ;then\n\
-        \t. ~/.kf5.env\n\
-        else\n\
-        \texport KDE_SESSION_VERSION=5\n\
-        fi\" > ${destroot}${prefix}/bin/${wrappername}"
-    if {[info exists kf5.wrapper_env_additions] && ${kf5.wrapper_env_additions} ne ""} {
-        system "echo \"# Additional env. variables specified by port:${subport} :\" >> ${destroot}${prefix}/bin/${wrappername}"
-        system "echo \"export ${kf5.wrapper_env_additions}\" >> ${destroot}${prefix}/bin/${wrappername}"
-        system "echo \"#\" >> ${destroot}${prefix}/bin/${wrappername}"
-    }
+    global kf5.applications_dir os.platform kf5.wrapper_env_additions
+
+    qt5.wrapper_env_additions "[join ${kf5.wrapper_env_additions}]"
     if {${os.platform} eq "darwin"} {
         if {${bundlename} eq ""} {
             set bundlename ${wrappername}
@@ -621,7 +626,6 @@ proc kf5.add_app_wrapper {wrappername {bundlename ""} {bundleexec ""}} {
         if {${bundleexec} eq ""} {
             set bundleexec ${bundlename}
         }
-        system "echo \"exec \\\"${kf5.applications_dir}/${bundlename}.app/Contents/MacOS/${bundleexec}\\\" \\\"\\\$\@\\\"\" >> ${destroot}${prefix}/bin/${wrappername}"
     } else {
         global kf5.project qt_libs_dir
         # no app bundles on this platform, but provide the same API by pretending there are.
@@ -633,10 +637,8 @@ proc kf5.add_app_wrapper {wrappername {bundlename ""} {bundleexec ""}} {
         if {${bundleexec} eq ""} {
             set bundleexec ${bundlename}
         }
-        system "echo \"export LD_LIBRARY_PATH=\$\{LD_LIBRARY_PATH\}:${prefix}/lib:${qt_libs_dir}\" >> ${destroot}${prefix}/bin/${wrappername}"
-        system "echo \"exec \\\"${kf5.applications_dir}/${bundleexec}\\\" \\\"\\\$\@\\\"\" >> ${destroot}${prefix}/bin/${wrappername}"
     }
-    system "chmod 755 ${destroot}${prefix}/bin/${wrappername}"
+    qt5.add_app_wrapper ${wrappername} ${bundlename} ${bundleexec} ${kf5.applications_dir}
 }
 
 # procedure to record a conflict with a KDE4 port if kde4compat isn't active
