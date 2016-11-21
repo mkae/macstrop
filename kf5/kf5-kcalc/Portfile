@@ -9,7 +9,7 @@ set kf5.virtualPath applications
 set kf5.category    utilities
 PortGroup           kf5 1.1
 
-kf5.use_latest      applications
+# kf5.use_latest      applications
 
 maintainers         gmail.com:rjvbertin mk openmaintainer
 
@@ -31,7 +31,6 @@ kf5.allow_docs_generation no
 patchfiles-append   patch-preserve-icon.diff
 
 platform darwin {
-    variant kde4compat description {allow installation alongside KDE4's port:kcalc} {}
     kf5.kde4compat
 
     patchfiles-append \

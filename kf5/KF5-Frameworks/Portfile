@@ -11,7 +11,7 @@ name                KF5-Frameworks
 version             ${kf5.version}
 set kf5::cat        Frameworks
 categories-append   ${kf5::cat}
-description         meta-port for the KDE Frameworks Version 5
+description         meta-port for the KDE Frameworks Version ${kf5.version}
 long_description    ${description}
 maintainers         gmail.com:rjvbertin mk openmaintainer
 
@@ -68,8 +68,7 @@ set startup_root ""
 # application uses. But the result is also that an application like Qt's Designer which simply loads a KF5
 # based plugin is no longer switched to a QSP mode it doesn't expect.
 #
-variant qspXDG conflicts nativeQSP description "Obsolete: switch Qt5's QStandardPaths to XDG-compliant mode (e.g. using ${prefix}/share)" {
-}
+variant qspXDG conflicts nativeQSP description "be incompatible with Qt5's QStandardPaths lacking a XDG-compliant mode" {}
 
 if {![variant_isset nativeQSP]} {
 # KF5 autotests were conceived to run with XDG-compliant QSP locations, and wreak havock when they are not.
@@ -115,6 +114,7 @@ post-destroot {
 # but as long as this has not been done KF5 cannot co-install with active KDE4 ports.
 proc check_kde4_header {header conflictport} {
     global prefix subport
+    ui_debug "check_kde4_header (${prefix}/include/)${header} (port:)${conflictport}"
     if {[file exists ${prefix}/include/${header}]} {
         ui_msg "${subport}'s ${header} conflicts with its KDE4 counterpart; this is a configuration bug in ${conflictport}"
         conflicts-append \
@@ -154,6 +154,8 @@ subport kf5-kapidox {
                     documentation more convenient (including reading settings from the target \
                     framework or other module) and a standard template for the generated \
                     documentation.
+    conflicts-append \
+                    kf5-kapidox-devel
     set kf5.framework \
                     kapidox
     kf5::set_checkums
@@ -172,17 +174,18 @@ subport kf5-kapidox {
         # doxyqml supports only Python 2.7
         depends_run-append \
                     port:doxygen \
-                    port:py27-doxyqml
+                    port:py27-doxyqml \
+                    port:py27-pygraphviz
     }
     patchfiles-append \
-                    patch-kapidox-include-objc++.diff
+                    kapidox/patch-kapidox-include-objc++.diff
     configure.args-append \
                     -DPYTHON_EXECUTABLE=${prefix}/bin/python${kf5::pyversion}
     post-destroot {
-        if {${os.platform} eq "darwin"} {
+        ifplatform darwin {
             xinstall -m 755 -d ${destroot}/${kf5::pylibdir}
             file rename ${destroot}${prefix}/lib/python${kf5::pyversion}/site-packages ${destroot}/${kf5::pylibdir}
-        } elseif {${os.platform} eq "linux"} {
+        } else {
             foreach b [glob -nocomplain ${destroot}${prefix}/bin/*] {
                 reinplace "s|/usr/bin/python|${prefix}/bin/python|g" ${b}
                 reinplace "s|'/usr/share/doc/qt'|'${prefix}/libexec/qt5/doc'|g" ${b}
@@ -194,6 +197,109 @@ subport kf5-kapidox {
     test.target     no tests for this framework
     notes-append    "It is recommended to install the Roboto fonts for optimal displaying of documentation generated \
                     through kf5-kapidox and doxygen. See http://www.google.com/fonts/specimen/Roboto ."
+}
+
+subport kf5-kapidox-devel {
+    description     KDE Doxygen Tools
+    long_description \
+                    The -devel version of port:kf5-kapidox.
+    conflicts-append \
+                    kf5-kapidox
+    set kf5.framework \
+                    kapidox
+    fetch.type      git
+#     v5.28.0-3-gc6731cd
+    git.branch      c6731cd241e07baccd5d54cad49989bc0b273af2
+    version         5.28.0.3
+    installs_libs   no
+    supported_archs noarch
+    depends_build-append \
+                    ${kf5::pythondep}
+    depends_run-append \
+                    ${kf5::pythondep} \
+                    port:py${kf5::pybranch}-yaml \
+                    port:py${kf5::pybranch}-jinja2
+    platform darwin {
+        depends_run-append \
+                    port:doxygen \
+                    port:py27-doxyqml \
+                    port:py27-pygraphviz
+    }
+    patchfiles-append \
+                    kapidox/patch-kapidox-include-objc++.diff
+    configure.args-append \
+                    -DPYTHON_EXECUTABLE=${prefix}/bin/python${kf5::pyversion}
+    post-destroot {
+        ifplatform {
+            xinstall -m 755 -d ${destroot}/${kf5::pylibdir}
+            file rename ${destroot}${prefix}/lib/python${kf5::pyversion}/site-packages ${destroot}/${kf5::pylibdir}
+        } else {
+            foreach b [glob -nocomplain ${destroot}${prefix}/bin/*] {
+                reinplace "s|/usr/bin/python|${prefix}/bin/python|g" ${b}
+                reinplace "s|'/usr/share/doc/qt'|'${prefix}/libexec/qt5/doc'|g" ${b}
+                reinplace "s|/usr/share|${prefix}/share|g" ${b}
+            }
+        }
+    }
+    test.cmd        echo
+    test.target     no tests for this framework
+    notes-append    "It is recommended to install the Noto fonts for optimal displaying of documentation generated \
+                    through kf5-kapidox and doxygen. See https://fonts.google.com/download?family=Noto%20Sans"
+}
+
+subport kf5-kgenapidox {
+    description     Legacy KDE Doxygen Tools
+    long_description \
+                    This port contains a legacy version of the KApiDox framework. \
+                    It contains scripts and data for building API documentation (dox) in \
+                    a standard format and style, and is much less restrive than current versions. \
+                    Use this kf5-apidox's kapidox_generate script on KF5 Frameworks, and this \
+                    port's kgenapidox script on any other KF5 project.
+    set kf5.framework \
+                    kapidox
+    version         5.22.0
+    set kf5.version 5.22.0
+    set kf5.branch  5.22
+    kf5.set_paths
+    checksums       rmd160  a0f5469000d73438e7c6b66cb49d108e0806d636 \
+                    sha256  a1550820460f50e5a260e654d081e53c964b022b73ffe377cb6ced1cde184133
+    installs_libs   no
+    supported_archs noarch
+    depends_build-append \
+                    ${kf5::pythondep}
+    depends_run-append \
+                    ${kf5::pythondep} \
+                    port:py${kf5::pybranch}-yaml \
+                    port:py${kf5::pybranch}-jinja2
+    platform darwin {
+        depends_run-append \
+                    port:doxygen \
+                    port:py27-doxyqml \
+                    port:py27-pygraphviz
+    }
+    patchfiles-append \
+                    kapidox/patch-kapidox-include-objc++.diff \
+                    kapidox/patch-kgenapidox.diff
+    configure.args-append \
+                    -DPYTHON_EXECUTABLE=${prefix}/bin/python${kf5::pyversion}
+    post-destroot {
+        foreach bin [glob -nocomplain ${destroot}${prefix}/bin/depdiag*] {
+            file delete -force ${bin}
+        }
+        file delete -force ${destroot}${prefix}/lib/python${kf5::pyversion}/site-packages/kapidox
+        ifplatform darwin {
+            xinstall -m 755 -d ${destroot}/${kf5::pylibdir}
+            file rename ${destroot}${prefix}/lib/python${kf5::pyversion}/site-packages ${destroot}/${kf5::pylibdir}
+        } else {
+            foreach b [glob -nocomplain ${destroot}${prefix}/bin/*] {
+                reinplace "s|/usr/bin/python|${prefix}/bin/python|g" ${b}
+                reinplace "s|'/usr/share/doc/qt'|'${prefix}/libexec/qt5/doc'|g" ${b}
+                reinplace "s|/usr/share|${prefix}/share|g" ${b}
+            }
+        }
+    }
+    test.cmd        echo
+    test.target     no tests for this framework
 }
 
 subport kf5-karchive {
@@ -441,10 +547,11 @@ subport kf5-kwidgetsaddons {
                     kwidgetsaddons
     kf5::set_checkums
     platform darwin {
-        # submit upstream
+        # http://commits.kde.org/kwidgetsaddons/d2bd8ef93783bc0f30de2db04bf5a95982cea864
         patchfiles-append \
                     kwidgetsaddons/patch-kwidgaddons-restrict-WId-usage.diff
     }
+    # http://commits.kde.org/kwidgetsaddons/40f46e66e136234bfb7aa60b732708c5f0573967
     patchfiles-append \
                     kwidgetsaddons/patch-kwidgaddons-preserve-window-icon.diff
     kf5.depends_qt5_components \
@@ -469,11 +576,9 @@ subport kf5-kwindowsystem {
     platform darwin {
         test.cmd    echo
         test.target no tests for this framework
-    }
-    platform darwin {
+
         kf5.depends_qt5_components \
                     qtmacextras
-        # submit upstream after porting all KWindowSystem adaptations for OS X from KDE4
         pre-patch {
             file delete \
                     ${worksrcpath}/src/platforms/osx/kwindowinfo.cpp \
@@ -523,8 +628,7 @@ subport kf5-kwindowsystem-devel {
     platform darwin {
         test.cmd    echo
         test.target no tests for this framework
-    }
-    platform darwin {
+
         # submit upstream after porting all KWindowSystem adaptations for OS X from KDE4
         pre-patch {
             file delete \
@@ -561,7 +665,7 @@ subport kf5-solid {
     set kf5.framework \
                     solid
     kf5::set_checkums
-    if {${os.platform} eq "darwin"} {
+    ifplatform darwin {
         depends_build-append \
                     port:flex \
                     port:bison
@@ -595,6 +699,7 @@ subport kf5-sonnet {
     kf5::set_checkums
     platform darwin {
         # this patch should be submitted upstream
+        # https://git.reviewboard.kde.org/r/127635/
         patchfiles-append \
                     patch-sonnet-use-qsettings-iniformat.diff
         # backend variants. Don't attempt to deactivate non-selected backends for now.
@@ -656,18 +761,19 @@ subport kf5-kauth {
     set kf5.framework \
                     kauth
     kf5::set_checkums
-#     if {[variant_isset qspXDG]} {
-#         # there is no need to add the activator to desktoptojson, at the moment
-#         patchfiles-append \
-#                     patch-kauth-add-qspxdg.diff
-#     }
     # https://git.reviewboard.kde.org/r/126086/
     patchfiles-append \
                     patch-kauth-osx.diff
     kf5.depends_frameworks \
                     kcoreaddons
-    # on linux, PolkitQt5-1 or PolkitQt-1 is required
-    platform linux {
+    ifplatform darwin {
+        notes-append "
+            !!!
+            Please consider the following to increase the chances that KAuth works optimally:
+            sudo launchctl load -w ${prefix}/Library/LaunchDaemons/org.freedesktop.dbus-system.plist
+        "
+    } else {
+        # on linux, PolkitQt5-1 or PolkitQt-1 is required
         depends_lib-append \
                     path:lib/pkgconfig/polkit-qt5-1.pc:polkit-qt5
         variant kde4auth description {Try this variant when installing for use with a KDE Plasma4 desktop} {
@@ -675,13 +781,6 @@ subport kf5-kauth {
                 reinplace "s|\"org.kde.kf5auth\"|\"org.kde.auth\"|g" ${worksrcpath}/src/backends/dbus/DBusHelperProxy.cpp
             }
         }
-    }
-    platform darwin {
-        notes-append "
-            !!!
-            Please consider the following to increase the chances that KAuth works optimally:
-            sudo launchctl load -w ${prefix}/Library/LaunchDaemons/org.freedesktop.dbus-system.plist
-        "
     }
     kf5.depends_qt5_components \
                     qttools
@@ -720,7 +819,7 @@ subport kf5-kcrash {
     kf5.depends_frameworks \
                     kcoreaddons kwindowsystem
     platform darwin {
-        # submit upstream
+        # http://commits.kde.org/kcrash/4b8b7597421320bcb502cc0c36134e2f8d90aec9
         patchfiles-append \
                     patch-kcrash-dont-closeAllFDs.diff \
                     patch-kcrash-no-display.diff
@@ -785,27 +884,24 @@ subport kf5-kfilemetadata {
                     path:lib/libavcodec.dylib:ffmpeg \
                     port:ebook-tools
     }
-    # report upstream?
+    # reported upstream
     patchfiles-append \
-                    kfilemetadata/patch-kfilemdata-compversion5.diff \
+                    kfilemetadata/patch-kfilemdata-compversion5.diff
+    # http://commits.kde.org/kfilemetadata/ce597d98de24d5456e7e05c0306a0498a5826723
+    patchfiles-append \
                     kfilemetadata/patch-kfilemdata-findffmpeg.diff
-    variant kde4compat description {allow installation alongside KDE4's port:kfilemetadata} {
+    kf5.kde4compat {
+        # even in kde4compat mode we can be in conflict with port:kfilemetadata
+        # if the KDE4 ports were installed without headerfile migration.
+        check_kde4_header kfilemetadata/properties.h kfilemetadata
         # note: it might be useful to provide a complementary variant to port:kfilemetadata
         post-destroot {
             file delete -force ${destroot}${prefix}/share/locale
         }
     }
-    if {![variant_isset kde4compat]} {
-        conflicts-append \
-                    kfilemetadata
-    } else {
-        # even in kde4compat mode we can be in conflict with port:kfilemetadata
-        # if the KDE4 ports were installed without headerfile migration.
-        check_kde4_header kfilemetadata/properties.h kfilemetadata
-    }
     post-destroot {
         # kfilemetadata "stock" has the weird idea to set the compatibility/so version to 3 ...
-        if {${os.platform} eq "darwin"} {
+        ifplatform darwin {
             ln -s libKF5FileMetaData.5.dylib ${destroot}${prefix}/lib/libKF5FileMetaData.3.dylib
         } else {
             ln -s libKF5FileMetaData.so.5 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/libKF5FileMetaData.so.3
@@ -853,6 +949,8 @@ subport kf5-knotifications {
                     port:phonon-qt5 \
                     port:dbusmenu-qt5
     platform darwin {
+        kf5.depends_qt5_components \
+                    qtmacextras
         # ignore KDE_FULL_SESSION if it's set
         patchfiles-append \
                     knotifications/patch-knotifications-ignore-full_session-envvar.diff
@@ -870,10 +968,6 @@ subport kf5-knotifications {
     test.target     no tests for this framework
     kf5.depends_qt5_components \
                     qttools
-    platform darwin {
-        kf5.depends_qt5_components \
-                    qtmacextras
-    }
 }
 
 subport kf5-kpackage {
@@ -886,11 +980,7 @@ subport kf5-kpackage {
     kf5::set_checkums
     kf5.depends_frameworks \
                     karchive kconfig kcoreaddons ki18n
-#     if {[variant_isset qspXDG]} {
-#         patchfiles-append \
-#                     patch-kpackage-add-qspxdg.diff
-#     }
-    # this one ought to be reported upstream:
+    # this one could be reported upstream:
     patchfiles-append \
                     patch-kpackage-autotests+tool-nogui.diff \
                     patch-kpackage-doctools-accept-older-version.diff
@@ -940,10 +1030,6 @@ subport kf5-baloo {
                     kconfig kcoreaddons kcrash kdbusaddons \
                     kfilemetadata ki18n kidletime kio \
                     solid
-#     if {[variant_isset qspXDG]} {
-#         patchfiles-append \
-#                     patch-baloo-add-qspxdb.diff
-#     }
     platform darwin {
         depends_lib-append \
                     port:lmdb
@@ -989,24 +1075,20 @@ subport kf5-kactivities {
                     kcoreaddons kdbusaddons kdeclarative \
                     kglobalaccel ki18n kio kpackage kservice \
                     kwidgetsaddons kwindowsystem kxmlgui
-    variant kde4compat description {allow installation alongside KDE4's port:kactivities} {
+    kf5.kde4compat {
         # note: it might be useful to provide a complementary variant to port:kactivities
         # really note: this is only required because of OS X's silly case-insensitive FS ...
+        check_kde4_header kactivities/version.h kactivities
         post-destroot {
             # we'll presume that KDE ports use the CMake files, not pkgconfig
             file rename ${destroot}${prefix}/lib/pkgconfig/libKActivities.pc ${destroot}${prefix}/lib/pkgconfig/libKF5Activities.pc
         }
-    }
-    if {![variant_isset kde4compat]} {
-        conflicts-append \
-                    kactivities
+    } else {
         post-destroot {
             # make libKF5Activities.pc available in non-compat mode too so dependent ports don't
             # have to test which kf5-kactivities variant is installed.
             ln -s libKActivities.pc ${destroot}${prefix}/lib/pkgconfig/libKF5Activities.pc
         }
-    } else {
-        check_kde4_header kactivities/version.h kactivities
     }
     test.cmd        echo
     test.target     no tests on OS X for this framework
@@ -1059,7 +1141,7 @@ subport kf5-kconfigwidgets {
     kf5.depends_frameworks \
                     kauth kconfig kcodecs kcoreaddons \
                     kdoctools kguiaddons ki18n kwidgetsaddons
-    # test and submit upstream
+    # http://commits.kde.org/kconfigwidgets/2337f564969aabe5549f2caca006a71dce274e6a
     patchfiles-append \
                     patch-kconfigwidgets-kstdactions-menurole.diff
 }
@@ -1081,10 +1163,6 @@ subport kf5-kdeclarative {
         depends_lib-append \
                     port:libepoxy
     }
-#     if {[variant_isset qspXDG]} {
-#         patchfiles-append \
-#                     kdeclarative/patch-kdeclarative-add-qspxdb.diff
-#     }
     patchfiles-append \
                     kdeclarative/patch-kdeclarative-nongui.diff
     kf5.depends_qt5_components \
@@ -1103,18 +1181,7 @@ subport kf5-kded {
     kf5.depends_frameworks \
                     kconfig kcoreaddons kcrash \
                     kdbusaddons kdoctools kinit kservice
-#     if {[vercmp ${version} 5.22.0] <= 0} {
-#         # test and propose upstream:
-#         # https://git.reviewboard.kde.org/r/126170/
-#         patchfiles-append \
-#                     kded/5.22.0/patch-kded-nongui-kded.diff
-#     }
     platform darwin {
-#         if {[vercmp ${version} 5.22.0] <= 0} {
-#             # ignore KDE_FULL_SESSION if it's set
-#             patchfiles-append \
-#                         kded/5.22.0/patch-kded-ignore-full_session-envvar.diff
-#         }
         post-destroot {
             xinstall -d -m 755 ${destroot}${prefix}/Library/LaunchAgents
             xinstall -m 644 ${filespath}/kded/org.macports.kded5.plist \
@@ -1165,10 +1232,6 @@ subport kf5-kdesu {
     kf5::set_checkums
     kf5.depends_frameworks \
                     kcoreaddons ki18n kpty kservice
-#     if {[variant_isset qspXDG]} {
-#         patchfiles-append \
-#                     patch-kdesu-add-qspxdg.diff
-#     }
 }
 
 subport kf5-kdewebkit {
@@ -1202,10 +1265,6 @@ subport kf5-kemoticons {
     kf5::set_checkums
     kf5.depends_frameworks \
                     karchive kconfig kservice kcoreaddons
-#     if {[variant_isset qspXDG]} {
-#         patchfiles-append \
-#                     patch-kemoticons-add-qspxdg.diff
-#     }
 }
 
 subport kf5-kglobalaccel {
@@ -1505,7 +1564,7 @@ subport kf5-kservice {
 }
 
 subport kf5-ktexteditor {
-    revbump_for_version 1 5.27.0 darwin
+    revbump_for_version 2 5.27.0 darwin
     description     Full text editor component
     long_description \
                     KTextEditor provides a powerful text editor component that you can embed in your \
@@ -1529,6 +1588,7 @@ subport kf5-ktexteditor {
     platform darwin {
         variant full description {activate features (menus) that are not currently supported fully on OS X} {}
         # this patch should be submitted upstream; cf. the corresponding sonnet patch
+        # https://git.reviewboard.kde.org/r/129511/
         patchfiles-append \
                     ktexteditor/patch-ktexteditor-use-qsettings-iniformat.diff
 #         if {![variant_isset full]} {
@@ -1546,7 +1606,17 @@ subport kf5-ktexteditor {
             patchfiles-append \
                     ktexteditor/patch-ktexteditor-menus-and-shortcuts.diff
         }
+        # fix too low lineheights on Mac
+        patchfiles-append \
+                    ktexteditor/patch-ktexteditor-fix-lineheight.diff
+        # quench a qwarning about an unsupported clipboard mode
+        # http://commits.kde.org/ktexteditor/35043d5ebace305cbdabfec9155dcfbd992087c9
+        patchfiles-append \
+                    ktexteditor/patch-ktexteditor-quench-qcliboard-qwarning.diff
     }
+    # fix a confusing alert message
+    patchfiles-append \
+                    ktexteditor/patch-ktexteditor-mod-message.diff
     kf5.depends_qt5_components \
                     qtscript qtxmlpatterns
 }
@@ -1563,6 +1633,8 @@ subport kf5-ktextwidgets {
                     kcompletion kconfig kconfigwidgets ki18n \
                     kiconthemes kservice sonnet kwidgetsaddons \
                     kwindowsystem
+    # window icon pushed in 9789cf3ca091a6affd2253c7609db1da41d4a6ba
+    # https://git.reviewboard.kde.org/r/129513/
     patchfiles-append \
                     ktextwidgets/patch-ktextwidgets-preserve-window-icon.diff \
                     ktextwidgets/patch-ktextwidg-use-qsettings-iniformat.diff
@@ -1707,11 +1779,13 @@ subport kf5-frameworkintegration {
                     kf5-frameworkintegration-devel
     # The KDE platform theme plugin was split off into a separate project in 5.22.0
     # For continuity, we make the corresponding port a runtime dependency.
-    platform darwin {
+    ifplatform darwin {
         depends_run-append \
                 port:kf5-osx-integration-devel
-    }
-    platform linux {
+        post-destroot {
+            file delete ${destroot}${prefix}/share/knotifications5/plasma_workspace.notifyrc
+        }
+    } else {
         depends_run-append \
                 port:kf5-plasma-integration
     }
@@ -1723,11 +1797,6 @@ subport kf5-frameworkintegration {
                     kio knotifications kwidgetsaddons
     test.env-append \
                     KDE_SESSION_VERSION=5
-    platform darwin {
-        post-destroot {
-            file delete ${destroot}${prefix}/share/knotifications5/plasma_workspace.notifyrc
-        }
-    }
 }
 
 subport kf5-frameworkintegration-devel {
@@ -1739,11 +1808,13 @@ subport kf5-frameworkintegration-devel {
                     kf5-frameworkintegration
     # The KDE platform theme plugin was split off into a separate project in 5.22.0
     # For continuity, we make the corresponding port a runtime dependency.
-    platform darwin {
+    ifplatform darwin {
         depends_run-append \
                 port:kf5-osx-integration-devel
-    }
-    platform linux {
+        post-destroot {
+            file delete ${destroot}${prefix}/share/knotifications5/plasma_workspace.notifyrc
+        }
+    } else {
         depends_run-append \
                 port:kf5-plasma-integration
     }
@@ -1759,21 +1830,12 @@ subport kf5-frameworkintegration-devel {
     # autotests need more patching than just being built as nongui (non-app-bundle) executables!
     test.env-append \
                     KDE_SESSION_VERSION=5
-    platform darwin {
-        post-destroot {
-            file delete ${destroot}${prefix}/share/knotifications5/plasma_workspace.notifyrc
-        }
-    }
 }
 
 homepage            http://projects.kde.org/projects/${kf5.virtualPath}/${kf5.framework} \
                     http://api.kde.org/frameworks-api/frameworks5-apidocs/${kf5.framework}/html/index.html
 if {${fetch.type} eq "git"} {
-    if {[file exists ${filespath}/${kf5.framework}-git/.git]} {
-        git.url     ${filespath}/${kf5.framework}-git
-    } else {
-        git.url     git://anongit.kde.org/${kf5.framework}
-    }
+    git.url         git://anongit.kde.org/${kf5.framework}
     distname        ${kf5.framework}-5.git
 } else {
     master_sites    http://download.kde.org/stable/${kf5.folder}
@@ -1794,11 +1856,7 @@ subport kf5-kdelibs4support {
                     classes whose functionality has been replaced by code in CMake, Qt and \
                     other frameworks.
     conflicts       kf5-kdelibs4support-devel
-    variant kde4compat description {allow installation alongside KDE4's port:kde4-runtime} {}
-    if {![variant_isset kde4compat]} {
-        conflicts-append \
-                    kde4-runtime
-    }
+    kf5.kde4compat -port kde4-runtime
     # change the type of framework to "portingAid"
     kf5.is_portingAid
     # call the function that will take care of resetting the rest
@@ -1871,11 +1929,7 @@ subport kf5-kdelibs4support-devel {
                     classes whose functionality has been replaced by code in CMake, Qt and \
                     other frameworks.
     conflicts       kf5-kdelibs4support
-    variant kde4compat description {allow installation alongside KDE4's port:kde4-runtime} {}
-    if {![variant_isset kde4compat]} {
-        conflicts-append \
-                    kde4-runtime
-    }
+    kf5.kde4compat -port kde4-runtime
     # change the type of framework to "portingAid"
     kf5.is_portingAid
     fetch.type      git

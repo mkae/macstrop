@@ -46,7 +46,6 @@ if {${subport} eq "${name}-devel"} {
 } else {
     conflicts       ${name}-devel
     version         5.2.0
-    use_xz          yes
     checksums       rmd160  a8c9dfa64bdd97291764d95b09197f418c826fce \
                     sha256  cf243fc1518b5bb6e289573c76d89b5fdcc50be89f6312b276af3320763c9260
     master_sites    http://download.kde.org/stable/digikam/
@@ -77,7 +76,7 @@ depends_lib-append  port:opencv
 require_active_variants opencv qt5
 require_active_variants opencv contrib
 
-platform darwin {
+ifplatform darwin {
     depends_build-append \
                     port:flex \
                     port:bison
@@ -245,7 +244,7 @@ post-patch {
 destroot.target     install/fast
 
 post-destroot {
-    platform darwin {
+    ifplatform darwin {
         kf5.add_app_wrapper digikam5 digikam
     } else {
         file rename ${destroot}${prefix}/bin/digikam ${destroot}${prefix}/bin/digikam.bin

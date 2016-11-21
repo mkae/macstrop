@@ -9,7 +9,7 @@ set kf5.virtualPath applications
 set kf5.dont_use_xz yes
 PortGroup           kf5 1.1
 set kf5.category    graphics
-kf5.use_latest      applications
+# kf5.use_latest      applications
 
 maintainers         gmail.com:rjvbertin mk openmaintainer
 
@@ -81,7 +81,7 @@ patchfiles-append   patch-linuxy-build.diff \
                     patch-generic-fixes.diff
 
 post-destroot {
-    set kf5.wrapper_env_additions "KRITA_NO_STYLE_OVERRIDE=1"
+    kf5.wrapper_env_additions "KRITA_NO_STYLE_OVERRIDE=1"
     kf5.add_app_wrapper krita5 krita
     # these files are already installed by port:kf5-breeze
     file delete -force ${destroot}${prefix}/share/color-schemes/BreezeDark.colors \
