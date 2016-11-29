@@ -1,6 +1,6 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 # kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax Tcl/Tk; tab-indents true; tab-width 4;
-# $Id: qt5-1.0.tcl 113952 2015-06-11 16:30:53Z gmail.com:rjvbertin $
+# $Id: qt5-1.0.tcl 113952 2015-06-11 16:30:53Z @RJVB $
 # $Id: qt5-1.0.tcl 113952 2013-11-26 18:01:53Z michaelld@macports.org $
 
 # Copyright (c) 2014 The MacPorts Project
@@ -96,22 +96,6 @@ namespace eval qt5 {
 
 # Ports that want to provide a universal variant need to use the muniversal PortGroup explicitly.
 universal_variant no
-
-# check for +debug variant of this port, and make sure Qt was
-# installed with +debug as well; if not, error out.
-platform darwin {
-    pre-extract {
-        if {[variant_exists debug] && \
-            [variant_isset debug] && \
-           ![info exists building_qt5]} {
-            if {![file exists ${qt_frameworks_dir}/QtCore.framework/QtCore_debug]} {
-                return -code error "\n\nERROR:\n\
-In order to install this port as +debug,
-Qt5 must also be installed with +debug.\n"
-            }
-        }
-    }
-}
 
 if {![variant_exists qt5kde]} {
     # define a variant that will be set default when port:qt5-kde or port:qt5-kde-devel is

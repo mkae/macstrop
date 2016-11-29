@@ -132,23 +132,15 @@ if {![info exists kf5.dont_use_xz]} {
 platform darwin {
     variant nativeQSP description {use the native Apple-style QStandardPaths locations} {}
 
-    if {![file exists ${qt_includes_dir}/QtCore/qextstandardpaths.h]} {
+#     if {![file exists ${qt_includes_dir}/QtCore/qextstandardpaths.h]}
+    if {![catch {set result [active_variants qt5-qtbase {}]}]} {
+        ui_debug "port:qt5-qtbase is installed and active"
         default_variants    +nativeQSP
     }
 
     if {![variant_isset nativeQSP]} {
         configure.cppflags-append \
                         -DQT_USE_EXTSTANDARDPATHS -DQT_EXTSTANDARDPATHS_ALT_DEFAULT=true
-    }
-}
-
-# A transitional procedure that adds definitions that are likely to become the default
-proc kf5.use_QExtStandardPaths {} {
-    if {[variant_isset nativeQSP]} {
-        ui_error "Port ${subport} shouldn't call kf5.use_QExtStandardPaths with +nativeQSP"
-        return -code error "kf5.use_QExtStandardPaths shouldn't be called"
-    } else {
-        ui_msg "kf5.use_QExtStandardPaths is obsolete"
     }
 }
 
@@ -507,7 +499,7 @@ proc kf5.use_latest {lversion} {
     }
 }
 
-# maintainers             gmail.com:rjvbertin mk openmaintainer
+# maintainers             @RJVB mk openmaintainer
 
 post-fetch {
     if {[file exists ${worksrcpath}/examples] && [file isdirectory ${worksrcpath}/examples] && ![variant_exists examples]} {
@@ -649,6 +641,8 @@ proc kf5.add_app_wrapper {wrappername {bundlename ""} {bundleexec ""}} {
 #
 # kf5.kde4compat [-port kde4port] [{compat code}] [else {KDE4 INcompatibility code\}]
 # (where square brackets enclose optional arguments
+# Note that `kde4port` can contain a list of ports enclosed in double quotes
+# (-port "a b c").
 #
 proc kf5.kde4compat {args} {
     global subport
@@ -702,6 +696,58 @@ proc kf5.kde4compat {args} {
     } elseif {[info exists code]} {
         ui_debug "### Executing +kde4compat code"
         uplevel 1 ${code}
+    }
+}
+
+proc kf5.require_kf5compat {args} {
+    global subport prefix
+    set len [llength ${args}]
+    set kde4port ""
+    set unwantedFile ""
+    set argError no
+    set nextArg 0
+    if {${len} >= 1} {
+        if {[lindex ${args} 0] eq "-port"} {
+            if {${len} >= 2} {
+                set kde4port [lindex ${args} 1]
+                set nextArg 2
+            } else {
+                set argError yes
+            }
+        }
+    }
+    if {${len} >= ${nextArg}+1} {
+        set unwantedFile [lindex ${args} ${nextArg}]
+    }
+    if {${argError}} {
+        ui_error "kf5.require_kf5compat \[-port kde4port\]"
+        return -code error "Malformed kf5.require_kf5compat invocation"
+    }
+    if {${kde4port} eq ""} {
+        if {[string first "kf5-" ${subport}] >= 0} {
+            set kde4port [string range ${subport} 4 end]
+        } else {
+            ui_error "kf5.require_kf5compat cannot determine the related KDE4 port for \"${subport}\""
+            return -code error "Improper use of kf5.require_kf5compat"
+        }
+    }
+    if {${unwantedFile} eq ""} {
+        if {![catch {set result [active_variants ${kde4port} kf5compat ""]}]} {
+            if {!${result}} {
+                conflicts-append ${kde4port}
+            } else {
+                ui_debug "${kde4port} installed with +kf5compat"
+            }
+        } else {
+            ui_debug "${kde4port} not installed (OK)"
+        }
+    } else {
+        if {[file exists ${prefix}/${unwantedFile}]} {
+            ui_debug "Incompatible ${kde4port} installed (has ${prefix}/${unwantedFile})"
+            conflicts-append ${kde4port}
+        } else {
+            ui_debug "${kde4port} installed with +kf5compat or not at all"
+        }
     }
 }
 
@@ -791,4 +837,7 @@ if {[variant_exists debug] && [variant_isset debug]} {
     configure.cxxflags-append   -fno-limit-debug-info
 }
 
-# kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax Tcl/Tk; tab-indents true; tab-width 4;
+# create a .macports-$subport-configure.cmd file containing the cmake invocation details
+cmake.save_configure_cmd
+
+# kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax MacPorts/Portfile; tab-indents true; tab-width 4;
