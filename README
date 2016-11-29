@@ -1,10 +1,12 @@
-This is my "local port repository" for use with MacPorts, containing among others the first co-installable Qt4 and Qt5 ports and a collection of other ports not (yet) in or overriding those from the main repository.
+This is a stripped-down clone of @RJVB's "local port repository" for use with MacPorts, historically containing among others the first co-installable Qt4 and Qt5 ports and a collection of other ports not (yet) in or overriding those from the main repository.
+
+This clone is designed to provide KF5 ports, built using a dedicted Qt5 port, port:qt5-kde .
 
 Instructions to use are given below. Make sure to read everything, especially the note about PortGroups.
 
 To "install", clone the repository to a location of choice. My original is in the root of the MacPorts prefix: /opt/local/site-ports; let's say you want to do the same:
 
-%> sudo -u macports git clone --depth=1 --no-single-branch http://github.com/RJVB/macstrop.git /opt/local/site-ports
+%> sudo -u macports git clone --depth=1 --no-single-branch http://github.com/mkae/macstrop.git /opt/local/site-ports
 
 (the --depth and --no-single-branch options are optional of course.)
 
@@ -13,6 +15,8 @@ Then, edit ${prefix}/etc/macports/sources.conf (${prefix} is where MacPorts is i
 file:///opt/local/site-ports
 
 and save the file. If you do not want this repository to be updated automatically whenever you do port selfupdate or port sync, you'll want to add [nosync] at the end of the line you added.
+
+The point here is adding a port source that is considered before the default source, so that `port install foo` will take the "foo" port from macstrop instead of from macports if it exists in both.
 
 Now, do
 
