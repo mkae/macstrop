@@ -13,8 +13,8 @@ if {${subport} eq "${name}-gtk2"} {
     git.branch      438553dfa702c43240257fe61935c9ab10563cc2
     version         ${qtc_version}.263
 } else {
-    git.branch      a174b4df0c96a3aaa343c3de50329a8de31485bd
-    version         ${qtc_version}.266
+    git.branch      110a3d3b1f60fa151768de766b65d59d56925f5b
+    version         ${qtc_version}.269
 }
 
 
@@ -22,7 +22,7 @@ description         A set of widget styles for Qt4/KDE4, Qt5/KF5 and/or GTk2 bas
 
 platforms           darwin
 license             LGPL-2+
-maintainers         gmail.com:rjvbertin mk
+maintainers         @RJVB mk
 
 homepage            http://kde-look.org/content/show.php?content=40492
 master_sites        http://quickgit.kde.org/?p=qtcurve.git
@@ -129,10 +129,6 @@ if {${subport} ne "${name}-extra"} {
     # deactivate config page(s) that don't make sense on OS X and/or don't work properly anywhere
     patchfiles-append       patch-deactivate-config-page.diff
     post-patch {
-        # WIP fixes for (mostly) qt5
-        # TODO: fix QPAINTER_RENDERHIT_AA_MAYBE_OFF typo upstream
-        # https://git.reviewboard.kde.org/r/129363/
-        system -W ${worksrcpath} "patch -Np1 -i ${filespath}/patch-qt5-fixes.diff"
         reinplace -W ${worksrcpath} "s|@@PREFIX@@|${prefix}|g" \
                             qt5/common/config_file.cpp \
                             qt4/common/config_file.cpp \

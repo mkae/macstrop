@@ -10,7 +10,7 @@ set kf5.category    system
 PortGroup           kf5 1.1
 # kf5.use_latest      applications
 
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         @RJVB mk openmaintainer
 
 installs_libs       no
 
@@ -29,11 +29,12 @@ kf5.depends_frameworks \
                     kconfigwidgets kdbusaddons
 
 platform darwin {
-    variant kde4compat description {allow installation alongside KDE4's port:kwallet} {}
-    post-destroot {
-        if {[variant_isset kde4compat]} {
+    kf5.kde4compat -port kwallet {
+        post-destroot {
             file delete -force ${destroot}${prefix}/share/icons
         }
+    }
+    post-destroot {
         kf5.add_app_wrapper kwalletmanager5
     }
 }

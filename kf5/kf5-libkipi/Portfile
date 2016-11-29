@@ -15,7 +15,7 @@ description         KIPI Library (KDE Image Program Interface), KF5 version.
 long_description    Libkipi is an interface to use kipi-plugins from a KDE image management  \
                     programme like digiKam (http://www.digikam.org). This is the new version,\
                     targetting KF5.
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         @RJVB mk openmaintainer
 
 installs_libs       yes
 
@@ -51,13 +51,8 @@ configure.args-append \
                     -DBUILD_TESTING=OFF
 
 platform darwin {
-    variant kde4compat description {allow installation alongside KDE4's port:libkipi} {}
-    if {![variant_isset kde4compat]} {
-        conflicts-append \
-                    libkipi
-    }
-    post-destroot {
-        if {[variant_isset kde4compat]} {
+    kf5.kde4compat {
+        post-destroot {
             file delete -force ${destroot}${prefix}/share/icons
         }
     }

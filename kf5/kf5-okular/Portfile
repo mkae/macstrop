@@ -11,7 +11,7 @@ PortGroup           kf5 1.1
 
 # # kf5.use_latest      applications-not-yet
 
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         @RJVB mk openmaintainer
 
 description         Universal document viewer for KF5.
 long_description    Okular is a universal document viewer based on KPDF for KDE 5. \
@@ -29,11 +29,11 @@ if {${subport} eq "${name}-devel"} {
     conflicts       ${name}
     fetch.type      git
     git.url     git://anongit.kde.org/okular
-#     # v15.12.1-24-gf9917aa
-#     git.branch      f9917aa9fe4274d8bce3418437ae8db917e121ec
 #     v15.12.1-455-gbfa28f1
-    git.branch      bfa28f1f64bfb8225db29d3f90c561b6e0603842
-    version         15.12.1.455
+#     git.branch      bfa28f1f64bfb8225db29d3f90c561b6e0603842
+#     v16.11.80-13-g5a7f119
+    git.branch      5a7f11927f79fe45bf6c3bd26644ca5fd7da7233
+    version         16.11.80.13
     worksrcdir      ${kf5.project}-5
     distname        ${kf5.project}-5
     set SPECPPATH   devel/
@@ -53,18 +53,17 @@ if {${subport} eq "${name}-devel"} {
 }
 
 
-# conflicts
 
+kf5.depends_qt5_components \
+                    qtsvg qtdeclarative
 kf5.depends_frameworks \
                     kactivities karchive kbookmarks kcompletion \
                     kconfig kconfigwidgets kcoreaddons \
                     kdbusaddons kjs kdelibs4support kio kparts \
                     threadweaver kwallet khtml
-# I have a Qt5 build for mobipocket, but the Okular module using it doesn't build. Bummer.
-#                     port:mobipocket-qt5
 depends_lib-append  port:phonon-qt5 \
                     port:zlib \
-                    path:lib/libpoppler-qt5.${kf5::libs_ext}:poppler-qt5 \
+                    port:poppler-qt5 \
                     port:qca-qt5 \
                     port:kf5-libkexiv2 \
                     port:jpeg
@@ -93,12 +92,8 @@ if {${subport} eq "${name}-devel"} {
 patchfiles-append   patch-plugin-depends.diff
 
 platform darwin {
-    variant kde4compat description {allow installation alongside KDE4's port:okular} {}
-    post-destroot {
-        kf5.add_app_wrapper okular5 okular
-        # rename okular.kcfg to accompany patch-kcfg_name.diff :
-        file rename ${destroot}${prefix}/share/config.kcfg/okular.kcfg ${destroot}${prefix}/share/config.kcfg/okular5.kcfg
-        if {[variant_isset kde4compat]} {
+    kf5.kde4compat {
+        post-destroot {
             file delete -force ${destroot}${prefix}/share/config.kcfg/okular_core.kcfg
             file delete -force ${destroot}${prefix}/share/config.kcfg/pdfsettings.kcfg
             file delete -force ${destroot}${prefix}/share/config.kcfg/gssettings.kcfg
@@ -109,9 +104,11 @@ platform darwin {
             file rename ${destroot}${prefix}/share/doc/HTML/en/okular ${destroot}${prefix}/share/doc/HTML/en/okular5
         }
     }
-}
-platform linux {
     post-destroot {
-        kf5.add_app_wrapper okular5 okular
+        # rename okular.kcfg to accompany patch-kcfg_name.diff :
+        file rename ${destroot}${prefix}/share/config.kcfg/okular.kcfg ${destroot}${prefix}/share/config.kcfg/okular5.kcfg
     }
+}
+post-destroot {
+    kf5.add_app_wrapper okular5 okular
 }

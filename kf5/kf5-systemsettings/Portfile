@@ -9,7 +9,7 @@ set kf5.virtualPath plasma
 PortGroup           kf5 1.1
 kf5.use_latest      plasma
 
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         @RJVB mk openmaintainer
 
 installs_libs       no
 
@@ -32,7 +32,7 @@ patchfiles-append \
                     patch-preserve-window-icon.diff
 
 platform darwin {
-    variant kde4compat description {allow installation alongside KDE4's port:kde4-workspace} {
+    kf5.kde4compat -port kde4-workspace {
         post-destroot {
             file delete ${destroot}${prefix}/lib/libsystemsettingsview.dylib
             file delete -force ${destroot}${prefix}/share/doc

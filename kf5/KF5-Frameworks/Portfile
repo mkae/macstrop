@@ -13,7 +13,7 @@ set kf5::cat        Frameworks
 categories-append   ${kf5::cat}
 description         meta-port for the KDE Frameworks Version ${kf5.version}
 long_description    ${description}
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         @RJVB mk openmaintainer
 
 installs_libs       yes
 if {${os.platform} eq "darwin"} {
@@ -531,6 +531,40 @@ subport kf5-kplotting {
     kf5::set_checkums
 }
 
+subport kf5-ksyntaxhighlighting {
+    # this is a sneak preview; KSyntaxHighlighting was released after 5.27.0
+    revbump_for_version 0 5.28.0
+    version         5.28.0
+    set kf5.version 5.28.0
+    set kf5.branch  5.28
+    kf5.set_paths
+    description     A syntax highlighting engine for Kate syntax definitions
+    long_description \
+                    A stand-alone implementation of the Kate syntax highlighting engine. \
+                    It's meant as a building block for text editors as well as for simple highlighted \
+                    text rendering (e.g. as HTML), supporting both integration with a custom editor \
+                    as well as a ready-to-use QSyntaxHighlighter sub-class. \
+                    More than 250 syntax definition files are included, additional ones are \
+                    picked up from the file system if present, so you can easily extend this \
+                    through application-specific syntax definitions for example.
+    set kf5.framework \
+                    syntax-highlighting
+#     kf5::set_checkums
+    checksums       rmd160  bbdd78374f3fc548ac134ae5d872851dd26cc313 \
+                    sha256  be3d4f730e8bfde843de393eeb6bd4842a052f0c438455de325b3d3269a3c13d
+    depends_build-append \
+                    path:bin/perl5:perl5
+    kf5.depends_qt5_components \
+                    qtxmlpatterns
+    # http://commits.kde.org/syntax-highlighting/804f15240bdcbc2a4e11dd2c635e0bfb794f30e4
+    patchfiles-append \
+                    ksyntaxhighlighting/patch-ksyntaxhilite-nongui.diff
+    post-destroot {
+        xinstall -m 755 -d ${destroot}${prefix}/share/org.kde.syntax-highlighting/syntax
+        xinstall -m 644 ${filespath}/ktexteditor/macports.xml ${destroot}${prefix}/share/org.kde.syntax-highlighting/syntax/
+    }
+}
+
 subport kf5-kwidgetsaddons {
     description     A large set of desktop widgets
     long_description \
@@ -875,7 +909,7 @@ subport kf5-kfilemetadata {
     kf5::set_checkums
     depends_lib-append \
                     port:exiv2 \
-                    path:lib/libpoppler-qt5.${kf5::libs_ext}:poppler-qt5
+                    port:poppler-qt5
     kf5.depends_frameworks \
                     karchive ki18n
     platform darwin {
@@ -885,8 +919,8 @@ subport kf5-kfilemetadata {
                     port:ebook-tools
     }
     # reported upstream
-    patchfiles-append \
-                    kfilemetadata/patch-kfilemdata-compversion5.diff
+#     patchfiles-append \
+#                     kfilemetadata/patch-kfilemdata-compversion5.diff
     # http://commits.kde.org/kfilemetadata/ce597d98de24d5456e7e05c0306a0498a5826723
     patchfiles-append \
                     kfilemetadata/patch-kfilemdata-findffmpeg.diff
@@ -902,9 +936,9 @@ subport kf5-kfilemetadata {
     post-destroot {
         # kfilemetadata "stock" has the weird idea to set the compatibility/so version to 3 ...
         ifplatform darwin {
-            ln -s libKF5FileMetaData.5.dylib ${destroot}${prefix}/lib/libKF5FileMetaData.3.dylib
+            ln -s libKF5FileMetaData.3.dylib ${destroot}${prefix}/lib/libKF5FileMetaData.5.dylib
         } else {
-            ln -s libKF5FileMetaData.so.5 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/libKF5FileMetaData.so.3
+            ln -s libKF5FileMetaData.so.3 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/libKF5FileMetaData.so.5
         }
     }
     platform linux {
@@ -1017,6 +1051,7 @@ subport kf5-kunitconversion {
 ### === Tier 3 ===
 
 subport kf5-baloo {
+    revbump_for_version 1 5.27.0 darwin
     description     File searching and indexing
     long_description \
                     Baloo provides file searching and indexing. It does so by maintaining an index \
@@ -1619,6 +1654,9 @@ subport kf5-ktexteditor {
                     ktexteditor/patch-ktexteditor-mod-message.diff
     kf5.depends_qt5_components \
                     qtscript qtxmlpatterns
+    post-destroot {
+        xinstall -m 644 ${filespath}/ktexteditor/macports.xml ${destroot}${prefix}/share/katepart5/syntax/
+    }
 }
 
 subport kf5-ktextwidgets {
@@ -2234,4 +2272,4 @@ livecheck.version   ${kf5.branch}
 livecheck.url       http://download.kde.org/stable/frameworks/
 livecheck.regex     (5+(\\.\\d+)+)
 
-# kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax Tcl/Tk; tab-indents true; tab-width 4;
+# kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax MacPorts/Portfile; tab-indents true; tab-width 4;

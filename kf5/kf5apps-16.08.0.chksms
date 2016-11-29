@@ -1,0 +1,204 @@
+--->  Verifying checksums for kf5-gpgmepp
+--->  Checksumming gpgmepp-16.08.0.tar.xz
+Portfile checksum: gpgmepp-16.08.0.tar.xz rmd160 b94f7b83a27387c0b550698b2ca6dd5b8553c758
+Distfile checksum: gpgmepp-16.08.0.tar.xz rmd160 1cd6fdb7f4720a9f9623c5f410cb640eb24005bf
+Portfile checksum: gpgmepp-16.08.0.tar.xz sha256 e8718d43e606378259042766a8900756792e7ce76b381bd0e32ec354fafe7a5c
+Distfile checksum: gpgmepp-16.08.0.tar.xz sha256 0efb9c2c67dda9efa759dcc3b0a7a91549b8a68faf9ce146fed5f63d71a1bc79
+The correct checksum line may be:
+checksums           rmd160  1cd6fdb7f4720a9f9623c5f410cb640eb24005bf \
+                    sha256  0efb9c2c67dda9efa759dcc3b0a7a91549b8a68faf9ce146fed5f63d71a1bc79
+--->  Verifying checksums for kf5-kate
+--->  Checksumming kate-16.08.0.tar.xz
+Portfile checksum: kate-16.08.0.tar.xz rmd160 008b5ea559aa569f5231d330ebc1330001c266ca
+Distfile checksum: kate-16.08.0.tar.xz rmd160 42fe28fb8f1f692734731522211bf8bacbc34f09
+Portfile checksum: kate-16.08.0.tar.xz sha256 db7767510b594776222583e9d5d7f45b39c2923c2fe1ca6f3371c9106e4d6811
+Distfile checksum: kate-16.08.0.tar.xz sha256 1bdf4081dfe8bd0766a1a98254efd0829acd40ab106a7921f025d0384ec32e7c
+The correct checksum line may be:
+checksums           rmd160  42fe28fb8f1f692734731522211bf8bacbc34f09 \
+                    sha256  1bdf4081dfe8bd0766a1a98254efd0829acd40ab106a7921f025d0384ec32e7c
+--->  Verifying checksums for kf5-okteta
+--->  Checksumming okteta-16.08.0.tar.xz
+Portfile checksum: okteta-16.08.0.tar.xz rmd160 e1b78c10002f1838ca86f3177e19d0d26138eaea
+Distfile checksum: okteta-16.08.0.tar.xz rmd160 3a08738752e584d672ae2ae6713b4ea0990687c1
+Portfile checksum: okteta-16.08.0.tar.xz sha256 3f11ab302a026f57c00beb25bcab922e5a4a536b689ccf1116fbe84fcc02ab40
+Distfile checksum: okteta-16.08.0.tar.xz sha256 daa4078a1dd924c7e67c4bebbfc68ec0189d16d50ab8afcf37409c44ce0dd0d6
+The correct checksum line may be:
+checksums           rmd160  3a08738752e584d672ae2ae6713b4ea0990687c1 \
+                    sha256  daa4078a1dd924c7e67c4bebbfc68ec0189d16d50ab8afcf37409c44ce0dd0d6
+--->  Verifying checksums for kf5-baloo-widgets
+--->  Checksumming baloo-widgets-16.08.0.tar.xz
+Portfile checksum: baloo-widgets-16.08.0.tar.xz rmd160 9ae2a842dea9d68005c07e97161eb23b341407d8
+Distfile checksum: baloo-widgets-16.08.0.tar.xz rmd160 21b5b44e5a559108bc371620ec0a5695136976b0
+Portfile checksum: baloo-widgets-16.08.0.tar.xz sha256 da1acdea08e56d8543da2d10f1c69c2fd1aa0957401705f7c44def501822ce41
+Distfile checksum: baloo-widgets-16.08.0.tar.xz sha256 ed389a98418fd8faa796421c1529fe810bcf600b398c73a813e892f027074e35
+The correct checksum line may be:
+checksums           rmd160  21b5b44e5a559108bc371620ec0a5695136976b0 \
+                    sha256  ed389a98418fd8faa796421c1529fe810bcf600b398c73a813e892f027074e35
+--->  Verifying checksums for kf5-kio-extras
+--->  Checksumming kio-extras-16.08.0.tar.xz
+Portfile checksum: kio-extras-16.08.0.tar.xz rmd160 8fc3f0df199aa8e88c8e4708472bffeac70a1f25
+Distfile checksum: kio-extras-16.08.0.tar.xz rmd160 3f62b846729593b25c5b65039d8869f1ede0af5b
+Portfile checksum: kio-extras-16.08.0.tar.xz sha256 58818d89babce5b3027a0c80c09664ae1faa2183771fa901821362351a4025e2
+Distfile checksum: kio-extras-16.08.0.tar.xz sha256 d6c60ca0066d62ed898e50e36254f49c02bbf6ea9dd94add976d1d972cc45d0d
+The correct checksum line may be:
+checksums           rmd160  3f62b846729593b25c5b65039d8869f1ede0af5b \
+                    sha256  d6c60ca0066d62ed898e50e36254f49c02bbf6ea9dd94add976d1d972cc45d0d
+--->  Verifying checksums for kf5-dolphin
+--->  Checksumming dolphin-16.08.0.tar.xz
+Portfile checksum: dolphin-16.08.0.tar.xz rmd160 9990bc98f55c3eec7bebb9cbb84f1d55efde9250
+Distfile checksum: dolphin-16.08.0.tar.xz rmd160 e9bc75d785decd2b225e6245252cb614f196263a
+Portfile checksum: dolphin-16.08.0.tar.xz sha256 621f4ae6fd586afb4f75c9b086757caec3cc75518bac065feef87f3b3b1d453b
+Distfile checksum: dolphin-16.08.0.tar.xz sha256 72c008b174a648c2bcc8b5e9f1e5b2bc7426524fda4fdecfd529bcde70581e77
+The correct checksum line may be:
+checksums           rmd160  e9bc75d785decd2b225e6245252cb614f196263a \
+                    sha256  72c008b174a648c2bcc8b5e9f1e5b2bc7426524fda4fdecfd529bcde70581e77
+--->  Verifying checksums for kf5-libkdcraw
+--->  Checksumming libkdcraw-16.08.0.tar.xz
+Portfile checksum: libkdcraw-16.08.0.tar.xz rmd160 81a7e5f504a58129c5abe5f0a9e7b8cc61719c4e
+Distfile checksum: libkdcraw-16.08.0.tar.xz rmd160 6d3e9319f36d2396fb49ea4aed03ac04e2d1e718
+Portfile checksum: libkdcraw-16.08.0.tar.xz sha256 dc278632e16b7ea7b52818717f646df6cc90b02095a96c13085b89f810839ecd
+Distfile checksum: libkdcraw-16.08.0.tar.xz sha256 2ea78568d31e09f4930c27c5235efb6397c6663ab046d2df9c5d5d776590b0b2
+The correct checksum line may be:
+checksums           rmd160  6d3e9319f36d2396fb49ea4aed03ac04e2d1e718 \
+                    sha256  2ea78568d31e09f4930c27c5235efb6397c6663ab046d2df9c5d5d776590b0b2
+--->  Verifying checksums for kf5-libkipi
+--->  Checksumming libkipi-16.08.0.tar.xz
+Portfile checksum: libkipi-16.08.0.tar.xz rmd160 fe410f9a55cd32477ef9d5726545c60f2beab0a6
+Distfile checksum: libkipi-16.08.0.tar.xz rmd160 f9aeb69a60cd1267bdcddb523fd03a6eb8594584
+Portfile checksum: libkipi-16.08.0.tar.xz sha256 c6b4ee6a935e0e5b2af6a10ed8b475d964e94129cb1e3fd00da3278875b5f309
+Distfile checksum: libkipi-16.08.0.tar.xz sha256 5b57e83a51a34673448b4db6b76f83b03faed01adc6b23a2fcb0644dee4c0289
+The correct checksum line may be:
+checksums           rmd160  f9aeb69a60cd1267bdcddb523fd03a6eb8594584 \
+                    sha256  5b57e83a51a34673448b4db6b76f83b03faed01adc6b23a2fcb0644dee4c0289
+--->  Verifying checksums for kf5-gwenview
+--->  Checksumming gwenview-16.08.0.tar.xz
+Portfile checksum: gwenview-16.08.0.tar.xz rmd160 6ca4efcb13ff48d3c30b131d95b649dcc8f54326
+Distfile checksum: gwenview-16.08.0.tar.xz rmd160 896c105dc4ba1c459a9194925b4969b103c52457
+Portfile checksum: gwenview-16.08.0.tar.xz sha256 80aeee29ff59f6ada7b25fdf6b3ef3dc7131b5180df3fd918e9524ea5f733cdc
+Distfile checksum: gwenview-16.08.0.tar.xz sha256 81071902de333d762bf2823d0f41e6115f0dc9177a36529bb67a9082b506c146
+The correct checksum line may be:
+checksums           rmd160  896c105dc4ba1c459a9194925b4969b103c52457 \
+                    sha256  81071902de333d762bf2823d0f41e6115f0dc9177a36529bb67a9082b506c146
+--->  Verifying checksums for kf5-kcalc
+--->  Checksumming kcalc-16.08.0.tar.xz
+Portfile checksum: kcalc-16.08.0.tar.xz rmd160 9cbcb06700c68a2a5a8dc3121b5b8d93cbbd4143
+Distfile checksum: kcalc-16.08.0.tar.xz rmd160 8542188a79667c9fbbadb4be6b16eb09e5af1820
+Portfile checksum: kcalc-16.08.0.tar.xz sha256 86723d1856d95206d557d3032c2c4872c6c6c3727ddfb7008dd1c8e89c5ffadd
+Distfile checksum: kcalc-16.08.0.tar.xz sha256 ab433097f5a5a5ab85f41e8c947e68ac49203074faa65afcbd0fb5c8cc1465de
+The correct checksum line may be:
+checksums           rmd160  8542188a79667c9fbbadb4be6b16eb09e5af1820 \
+                    sha256  ab433097f5a5a5ab85f41e8c947e68ac49203074faa65afcbd0fb5c8cc1465de
+--->  Verifying checksums for kf5-kdebugsettings
+--->  Checksumming kdebugsettings-16.04.3.tar.xz
+Portfile checksum: kdebugsettings-16.04.3.tar.xz rmd160 4349caebcf92fa3ef10205c739eeca8d39de59e3
+Distfile checksum: kdebugsettings-16.04.3.tar.xz rmd160 f0a8209bddf276e9376bdcc903f93a2ca48d8f77
+Portfile checksum: kdebugsettings-16.04.3.tar.xz sha256 62d49a01ebe18659fceabc7c909d1694554399932275771b105ae1324e744d55
+Distfile checksum: kdebugsettings-16.04.3.tar.xz sha256 468f45fa6841bdf8ac49fbdcaea2ccc36a3f82698e8a3fed3e6a4d86f08c6ca3
+The correct checksum line may be:
+checksums           rmd160  f0a8209bddf276e9376bdcc903f93a2ca48d8f77 \
+                    sha256  468f45fa6841bdf8ac49fbdcaea2ccc36a3f82698e8a3fed3e6a4d86f08c6ca3
+--->  Fetching distfiles for kf5-kdesvn
+--->  Fetching distfiles for kf5-konversation
+--->  Verifying checksums for kf5-kruler
+--->  Checksumming kruler-16.08.0.tar.xz
+Portfile checksum: kruler-16.08.0.tar.xz rmd160 802f47dd2b5c23456f99216daec827daaa8ee454
+Distfile checksum: kruler-16.08.0.tar.xz rmd160 ffad646943dde2cb92c51fc0772ff7276d244226
+Portfile checksum: kruler-16.08.0.tar.xz sha256 70248194d048825f1c38dbd3754700b8305a95d79409eb5e936d0c01fc47f589
+Distfile checksum: kruler-16.08.0.tar.xz sha256 cf5126309c83c211bf05641e0d875fd271407e3900bc78e29624535e652b9ee5
+The correct checksum line may be:
+checksums           rmd160  ffad646943dde2cb92c51fc0772ff7276d244226 \
+                    sha256  cf5126309c83c211bf05641e0d875fd271407e3900bc78e29624535e652b9ee5
+--->  Fetching distfiles for kf5-kwebkitpart
+--->  Verifying checksums for kf5-kcalcore
+--->  Checksumming kcalcore-16.08.0.tar.xz
+Portfile checksum: kcalcore-16.08.0.tar.xz rmd160 986d7c2c074d1f94e2504215d072f67c78949891
+Distfile checksum: kcalcore-16.08.0.tar.xz rmd160 79af516dab0ba6b6deed14acbc83909bef89bc7c
+Portfile checksum: kcalcore-16.08.0.tar.xz sha256 3768fc93b8df4675905673e33942994aadabd75f840be7306b1fb2ecfd0c81a3
+Distfile checksum: kcalcore-16.08.0.tar.xz sha256 16e0b125b703ab38318f600302254770e6e714233c19df1f1ae8c812e5f29088
+The correct checksum line may be:
+checksums           rmd160  79af516dab0ba6b6deed14acbc83909bef89bc7c \
+                    sha256  16e0b125b703ab38318f600302254770e6e714233c19df1f1ae8c812e5f29088
+--->  Verifying checksums for kf5-libkexiv2
+--->  Checksumming libkexiv2-16.08.0.tar.xz
+Portfile checksum: libkexiv2-16.08.0.tar.xz rmd160 e97eebcb13ecf153003e779fbd0f35c8cac7c2b2
+Distfile checksum: libkexiv2-16.08.0.tar.xz rmd160 a11475a4fde99585bf4049d33f9928c5ebc2d102
+Portfile checksum: libkexiv2-16.08.0.tar.xz sha256 0235b8e82b7342d22b1271039fbd25ed4f55fc2d6471e5f294eb52481b1fa385
+Distfile checksum: libkexiv2-16.08.0.tar.xz sha256 c71f5a96808696edcc1ca4d9fedbf9c74cd0a5b005e1c66b89cff2bf5c4c70a0
+The correct checksum line may be:
+checksums           rmd160  a11475a4fde99585bf4049d33f9928c5ebc2d102 \
+                    sha256  c71f5a96808696edcc1ca4d9fedbf9c74cd0a5b005e1c66b89cff2bf5c4c70a0
+--->  Fetching distfiles for kf5-okular
+--->  Fetching distfiles for kf5-purpose
+--->  Fetching distfiles for kf5-smb4k
+--->  Verifying checksums for kf5-umbrello
+--->  Checksumming umbrello-16.08.0.tar.xz
+Portfile checksum: umbrello-16.08.0.tar.xz rmd160 2f33ba1857ba866e50624e697ba59c8976750632
+Distfile checksum: umbrello-16.08.0.tar.xz rmd160 c1c2ecba13280a7023ac0e4d089b1504613d1a7f
+Portfile checksum: umbrello-16.08.0.tar.xz sha256 f4f5212e76d9a2fef74feb8a044957818390291b12c6d21d933cf68490467d2b
+Distfile checksum: umbrello-16.08.0.tar.xz sha256 f4359999289624d91b85dd42347a3cc212a06b2403c4f9a5f17336ae506b0c4a
+The correct checksum line may be:
+checksums           rmd160  c1c2ecba13280a7023ac0e4d089b1504613d1a7f \
+                    sha256  f4359999289624d91b85dd42347a3cc212a06b2403c4f9a5f17336ae506b0c4a
+--->  Verifying checksums for kf5-libkomparediff2
+--->  Checksumming libkomparediff2-16.08.0.tar.xz
+Portfile checksum: libkomparediff2-16.08.0.tar.xz rmd160 f326b97cd7af67e3a225c42709156c0a030eee18
+Distfile checksum: libkomparediff2-16.08.0.tar.xz rmd160 cabf4f34cd489dd571745af17b3bfdf8525e9512
+Portfile checksum: libkomparediff2-16.08.0.tar.xz sha256 3bdc5cefe4b2b2cb636c8036ea4ebe2a6e3748ab2c1debb4aac05a66544bb50c
+Distfile checksum: libkomparediff2-16.08.0.tar.xz sha256 d1286a57393ec4259e906f876711f911a7bc8ec8652b631bcb8ec96fdd870fbb
+The correct checksum line may be:
+checksums           rmd160  cabf4f34cd489dd571745af17b3bfdf8525e9512 \
+                    sha256  d1286a57393ec4259e906f876711f911a7bc8ec8652b631bcb8ec96fdd870fbb
+--->  Verifying checksums for kf5-kompare
+--->  Checksumming kompare-16.08.0.tar.xz
+Portfile checksum: kompare-16.08.0.tar.xz rmd160 e0c149ab6ebfbee3d9eef8bf341ddd5ac1125800
+Distfile checksum: kompare-16.08.0.tar.xz rmd160 9708a8e361128a5c1d12a5f56f3fdd54b3a6bd3e
+Portfile checksum: kompare-16.08.0.tar.xz sha256 17180048706c3a69cf593dfa225d34d2c3ddcee852675d4c35d9983589e6b227
+Distfile checksum: kompare-16.08.0.tar.xz sha256 3f415eb572748f42c402a210422e9c918e5900b2ad3484c83f370c109fa0a577
+The correct checksum line may be:
+checksums           rmd160  9708a8e361128a5c1d12a5f56f3fdd54b3a6bd3e \
+                    sha256  3f415eb572748f42c402a210422e9c918e5900b2ad3484c83f370c109fa0a577
+--->  Verifying checksums for kf5-kwalletmanager
+--->  Checksumming kwalletmanager-16.08.0.tar.xz
+Portfile checksum: kwalletmanager-16.08.0.tar.xz rmd160 cbff9668697610f6fce59c8b948590dd22a9e1fa
+Distfile checksum: kwalletmanager-16.08.0.tar.xz rmd160 9fdcae7629c8caa3a70f3498998c7182a683831b
+Portfile checksum: kwalletmanager-16.08.0.tar.xz sha256 adebdd01a60c60f532850e5f9bbae6fd6d1bc0c9bef4b4534f157937e7f467d0
+Distfile checksum: kwalletmanager-16.08.0.tar.xz sha256 e0a5d3a34ff9a68a5bf29ac22f2198349e35f0cfb6640b479a2d634f5a6a999c
+The correct checksum line may be:
+checksums           rmd160  9fdcae7629c8caa3a70f3498998c7182a683831b \
+                    sha256  e0a5d3a34ff9a68a5bf29ac22f2198349e35f0cfb6640b479a2d634f5a6a999c
+--->  Verifying checksums for kf5-marble
+--->  Checksumming marble-16.08.0.tar.xz
+Portfile checksum: marble-16.08.0.tar.xz rmd160 349a81a6cfd3f48a2104302976c0289cac097a45
+Distfile checksum: marble-16.08.0.tar.xz rmd160 0d61bce13623b2ef02bbdaa5ea5fb47793bd7b9c
+Portfile checksum: marble-16.08.0.tar.xz sha256 32a006c0b105bd9f19913ff620e5eee8a2c09acc3b28fabe5645dceb4f188f13
+Distfile checksum: marble-16.08.0.tar.xz sha256 ce309c827f60f389a012fb8ea8ccccf5d5925e0c5de8ae41f2ac981c1fe1c5a8
+The correct checksum line may be:
+checksums           rmd160  0d61bce13623b2ef02bbdaa5ea5fb47793bd7b9c \
+                    sha256  ce309c827f60f389a012fb8ea8ccccf5d5925e0c5de8ae41f2ac981c1fe1c5a8
+--->  Verifying checksums for kf5-konsole
+--->  Checksumming konsole-16.08.0.tar.xz
+Portfile checksum: konsole-16.08.0.tar.xz rmd160 3811712c26ebfeac44d45ae0555d41a926841fc3
+Distfile checksum: konsole-16.08.0.tar.xz rmd160 c007d05b1cf45f18bc17030a359656b51e755438
+Portfile checksum: konsole-16.08.0.tar.xz sha256 29dcfc6229dfc83e81b5bd8133abc57d9135ff38ea31682d997c8b43a0ebe7de
+Distfile checksum: konsole-16.08.0.tar.xz sha256 cfd5628b68e14db7b6228099b9e45eb35f8a04bfea05bf9c61bae0bf2803c8ce
+The correct checksum line may be:
+checksums           rmd160  c007d05b1cf45f18bc17030a359656b51e755438 \
+                    sha256  cfd5628b68e14db7b6228099b9e45eb35f8a04bfea05bf9c61bae0bf2803c8ce
+--->  Verifying checksums for kf5-khelpcentre
+--->  Checksumming khelpcenter-16.08.0.tar.xz
+Portfile checksum: khelpcenter-16.08.0.tar.xz rmd160 72f4e6c72bbe2cabca95e12354a49a1ab0204098
+Distfile checksum: khelpcenter-16.08.0.tar.xz rmd160 7d06f01bb7349f3571dc151354d28806fcad6b93
+Portfile checksum: khelpcenter-16.08.0.tar.xz sha256 8d11ef0d47c55f08bc1bbdd0c68d163661edf67a595cd696080b36e56a21f01a
+Distfile checksum: khelpcenter-16.08.0.tar.xz sha256 018242124842cfc234c68650c7a0adc1e513b4440924ddc78f81131b559748cb
+The correct checksum line may be:
+checksums           rmd160  7d06f01bb7349f3571dc151354d28806fcad6b93 \
+                    sha256  018242124842cfc234c68650c7a0adc1e513b4440924ddc78f81131b559748cb
+--->  Verifying checksums for kf5-dev-scripts
+--->  Checksumming kde-dev-scripts-16.08.0.tar.xz
+Portfile checksum: kde-dev-scripts-16.08.0.tar.xz rmd160 a20eefdd82f40704f20ed23a48ad7bc053fbeb6e
+Distfile checksum: kde-dev-scripts-16.08.0.tar.xz rmd160 4bd8e8ccd6a4e7c3bd411e9aba47c5399556b2f9
+Portfile checksum: kde-dev-scripts-16.08.0.tar.xz sha256 f367fe6bcd1fe4ced15b4fd5f6c074f2f23f81e0ad4f5543c48c0db4f5a14976
+Distfile checksum: kde-dev-scripts-16.08.0.tar.xz sha256 01520eba1b25ff16ec76b42d75f9f6f2255e61713d13c549d1ccd4053f2afca4
+The correct checksum line may be:
+checksums           rmd160  4bd8e8ccd6a4e7c3bd411e9aba47c5399556b2f9 \
+                    sha256  01520eba1b25ff16ec76b42d75f9f6f2255e61713d13c549d1ccd4053f2afca4

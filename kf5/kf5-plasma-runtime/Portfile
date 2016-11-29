@@ -18,7 +18,7 @@ long_description    This port provides a few useful KF5 Plasma workspace runtime
 checksums           rmd160  44c5dd04b6777b753e47779fb09a739d84e572f2 \
                     sha256  84f48fecb68b9061d1f12d58f00207e3d0718a7ef8a424d381e1cd8dd3efbbb7
 
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         @RJVB mk openmaintainer
 
 kf5.depends_qt5_components \
                     qtdeclarative qtscript
@@ -54,18 +54,19 @@ post-extract {
 }
 
 platform darwin {
-    variant kde4compat description {allow installation alongside KDE4's port:kde4-runtime and port:kde4-workspace} {}
+    kf5.kde4compat -port kde4-workspace {
+        post-destroot {
+            if {[file exists ${destroot}${prefix}/share/locale]} {
+                file delete -force ${destroot}${prefix}/share/locale
+            }
+        }
+    }
 }
 
 post-destroot {
     if {[file exist ${destroot}${prefix}/share/doc]} {
         # there's nothing of interest for us in the docs ...
         file delete -force ${destroot}${prefix}/share/doc
-    }
-    if {[variant_isset kde4compat]} {
-        if {[file exists ${destroot}${prefix}/share/locale]} {
-            file delete -force ${destroot}${prefix}/share/locale
-        }
     }
     platform darwin {
         xinstall -m 755 ${filespath}/AppleTerminal.sh ${destroot}${prefix}/bin/AppleTerminal

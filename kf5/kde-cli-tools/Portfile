@@ -10,7 +10,7 @@ PortGroup           kf5 1.1
 kf5.use_latest      plasma
 name                kf5-cli-tools
 
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         @RJVB mk openmaintainer
 
 installs_libs       no
 
@@ -38,7 +38,7 @@ platform darwin {
     patchfiles-append \
                     patch-no-x11.diff \
                     patch-nongui-execs.diff
-    variant kde4compat description {allow installation alongside KDE4's port:kde4-runtime} {
+    kf5.kde4compat -port kde4-runtime {
         post-destroot {
             file delete -force ${destroot}${prefix}/share/doc/HTML
             file delete -force ${destroot}${prefix}/share/locale

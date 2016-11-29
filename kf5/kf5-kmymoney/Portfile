@@ -6,8 +6,8 @@ PortSystem          1.0
 
 set kf5.project     kmymoney
 set kf5.virtualPath applications
-PortGroup           kf5 1.1
 set kf5.category    office
+PortGroup           kf5 1.1
 
 subport kf5-libalkimia {}
 subport kf5-libalkimia-devel {}
@@ -97,7 +97,7 @@ switch ${subport} {
     }
 }
 
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         @RJVB mk openmaintainer
 homepage            https://kmymoney.org
 
 # installs_libs       no
@@ -109,7 +109,7 @@ patch.pre_args      -Np1
 
 if {${subport} eq "${name}" || ${subport} eq "${name}-devel"} {
     platform darwin {
-        variant kde4compat description {allow installation alongside KDE4's port:kmymoney4} {
+        kf5.kde4compat -port kmymoney4 {
             post-destroot {
             }
         }

@@ -11,7 +11,7 @@ PortGroup           kf5 1.1
 
 # kf5.use_latest      applications
 
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         @RJVB mk openmaintainer
 
 description         Image viewer for KF5.
 long_description    Gwenview is able to load and save to a variety of image formats \
@@ -49,15 +49,16 @@ platform darwin {
     # Baloo isn't functional on OS X
     configure.args-append \
                     -DGWENVIEW_SEMANTICINFO_BACKEND:STRING=Fake
-    variant kde4compat description {allow installation alongside KDE4's port:gwenview} {}
-    post-destroot {
-        kf5.add_app_wrapper gwenview5 gwenview
-        if {[variant_isset kde4compat]} {
+    kf5.kde4compat {
+        post-destroot {
             if {[file exists ${destroot}${prefix}/share/doc/HTML]} {
                 file delete -force ${destroot}${prefix}/share/doc/HTML
             }
             file delete -force ${destroot}${prefix}/share/icons
         }
+    }
+    post-destroot {
+        kf5.add_app_wrapper gwenview5 gwenview
     }
 }
 platform linux {
