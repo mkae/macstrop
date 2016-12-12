@@ -10,7 +10,7 @@ PortGroup           kf5 1.1
 kf5.use_latest      plasma
 name                kf5-cli-tools
 
-maintainers         @RJVB mk openmaintainer
+maintainers         gmail.com:rjvbertin mk openmaintainer
 
 installs_libs       no
 
@@ -32,7 +32,7 @@ kf5.depends_frameworks \
                     kdelibs4support kdesu
 
 # Qt documentation for this package makes no sense
-kf5.allow_docs_generation no
+kf5.allow_apidocs_generation no
 
 platform darwin {
     patchfiles-append \

@@ -9,7 +9,7 @@ set kf5.virtualPath plasma
 PortGroup           kf5 1.1
 kf5.use_latest      plasma
 
-maintainers         @RJVB mk openmaintainer
+maintainers         gmail.com:rjvbertin mk openmaintainer
 
 installs_libs       yes
 
@@ -31,7 +31,7 @@ kf5.depends_frameworks \
 # optionally depend on kdevplatform to build "plasmate" ... if that makes sense
 
 # Qt documentation for this package makes no sense
-kf5.allow_docs_generation no
+kf5.allow_apidocs_generation no
 
 patchfiles-append   patch-no-plasmate.diff
 

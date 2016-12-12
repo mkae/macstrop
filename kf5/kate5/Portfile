@@ -10,7 +10,7 @@ set kf5.category    utilities
 PortGroup           kf5 1.1
 kf5.use_latest      applications
 
-maintainers         @RJVB mk openmaintainer
+maintainers         gmail.com:rjvbertin mk openmaintainer
 
 # this port installs "kparts" which are intended to act as plugins for other apps
 installs_libs       yes
@@ -26,7 +26,7 @@ checksums           rmd160  2d15cf6ba70ef96280908fd05157f418e4f4a3a3 \
                     sha256  be4befb137749378be39fd239050f997687fc6ee80a0d9cc8cdf9eb5cc544e77
 
 installs_libs       no
-kf5.allow_docs_generation \
+kf5.allow_apidocs_generation \
                     no
 
 depends_build-append \

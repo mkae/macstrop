@@ -13,7 +13,7 @@ PortGroup           conflicts_build 1.0
 
 kf5.use_latest      kf5.release
 
-maintainers         @RJVB mk openmaintainer
+maintainers         gmail.com:rjvbertin mk openmaintainer
 
 description         Photo Management Programme.
 long_description    Digital photo management programme to import, organise, enhance, search and export your digital images.
@@ -145,7 +145,7 @@ ifplatform darwin {
     require_active_variants exiv2 "" xmp
 }
 
-kf5.allow_docs_generation no
+kf5.allow_apidocs_generation no
 
 # # https://git.reviewboard.kde.org/r/128732/
 # patchfiles-append   patch-reenable-styles.diff

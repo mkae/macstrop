@@ -10,7 +10,7 @@ set kf5.category    system
 PortGroup           kf5 1.1
 kf5.use_latest      applications
 
-maintainers         @RJVB mk openmaintainer
+maintainers         gmail.com:rjvbertin mk openmaintainer
 
 description         Konsole is the terminal emulator for the K Desktop Environment.
 long_description    Konsole is an X terminal emulator for the KDE platform, allowing users \
@@ -70,7 +70,7 @@ kf5.depends_frameworks \
 # https://commits.kde.org/konsole/378518ea4bece6fdde0919626512fe652b1949fc
 patchfiles-append   ${PPREFIX}patch-key-shortcuts.diff
 
-kf5.allow_docs_generation no
+kf5.allow_apidocs_generation no
 
 ifplatform darwin {
     if {${subport} eq ${name}} {

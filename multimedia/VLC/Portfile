@@ -1,5 +1,4 @@
 # -*- coding: utf-8; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
-# $Id: Portfile 146115 2016-02-28 16:09:05Z devans@macports.org $
 
 PortSystem              1.0
 PortGroup               compiler_blacklist_versions 1.0
@@ -62,8 +61,6 @@ if {(${subport} eq ${name}) || (${subport} eq "lib${name}")} {
     distname            vlc-${version}
     use_xz              yes
 
-#     checksums           rmd160  8c6d4194da37210fe409c965f430898fbe7f2416 \
-#                         sha256  b9d7587d35f13c3c981964c8cc8b03f1c7c8edf528be476b3ca1d2efedd5bf5b
     checksums           rmd160  2fe178bb9a4b2ad5ca0294d3e52ceb992b22e8ee \
                         sha256  1632e91d2a0087e0ef4c3fb4c95c3c2890f7715a9d1d43ffd46329f428cf53be
 
@@ -77,7 +74,7 @@ if {(${subport} eq ${name}) || (${subport} eq "lib${name}")} {
 
     depends_build       port:pkgconfig
 
-    depends_lib         path:${FFMPEG_VLC_PREFIX}/lib/libavcodec.dylib:ffmpeg-VLC \
+    depends_lib         port:ffmpeg-VLC \
                         port:a52dec \
                         port:avahi \
                         port:bzip2 \
@@ -188,7 +185,6 @@ if {(${subport} eq ${name}) || (${subport} eq "lib${name}")} {
     # That requires the patch-for-lua52.diff which is appended to patchfiles below.
     # update 2.2.2 : lua 5.3 gives compiler syntax errors so we stick with 5.2 for now.
     depends_lib-append  port:lua52
-    # depends_lib-append  port:lua
 
     # VLC doesn't currently build for me using port:clang-3.8
     compiler.blacklist-append \
@@ -200,17 +196,18 @@ if {(${subport} eq ${name}) || (${subport} eq "lib${name}")} {
                         static_assert.patch \
                         no-sparkle.patch \
                         patch-vlc-no-O4.diff \
-                        patch-ffmpegVLC.diff
+                        patch-ffmpegVLC.diff \
+                        patch-soundfont-path.diff
 
     post-patch {
-        reinplace "s:librsvg-2/librsvg:librsvg:" \
-            ${worksrcpath}/modules/text_renderer/svg.c
-
         if {[string match *clang* ${configure.cxx}] && ${configure.cxx_stdlib} == "libc++"} {
             reinplace "s:-lstdc\+\+:-lc++:" \
                 ${worksrcpath}/configure.ac \
                 ${worksrcpath}/modules/access/Makefile.am
         }
+
+        reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/modules/codec/fluidsynth.c
+
         # patch source using ffmpeg to use the correct header file locations
         foreach dir {libavcodec libavformat libavresample libavutil libpostproc libswresample libswscale} {
             foreach module {access codec/avcodec demux/avformat hw/vdpau packetizer video_chroma} {
@@ -261,9 +258,6 @@ if {(${subport} eq ${name}) || (${subport} eq "lib${name}")} {
     # live555 is installed to a weird location
     configure.cppflags-append -I${prefix}/lib/live/liveMedia/include
 
-    build.target        all
-    destroot.target     install
-
     livecheck.url       http://download.videolan.org/pub/videolan/vlc/
     livecheck.regex     <a href=\"(\\d\[\\d|\.|\\w\]+).*/\">
 
@@ -293,7 +287,7 @@ if {(${subport} eq ${name}) || (${subport} eq "lib${name}")} {
                         --enable-dca --enable-png --disable-quicktime --enable-twolame \
                         --enable-speex --enable-theora --enable-x264 --enable-x265 --enable-postproc \
                         --disable-gst-decode --enable-avcodec --enable-avformat --enable-swscale \
-                        --disable-fluidsynth --enable-schroedinger --enable-vpx
+                        --enable-fluidsynth --enable-schroedinger --enable-vpx
 
     # Video Plugins. We do our best to deactivate X11 and disable its auto-detection by
     # claiming the headers and libs are somewhere they're not.
@@ -330,10 +324,10 @@ if {(${subport} eq ${name}) || (${subport} eq "lib${name}")} {
                         --enable-upnp
 
     # 20150209: Jack really would require a newer variant than what's currently in MacPorts
-    variant jack description {Enable jack and fluidsynth plugins for audio output} {
-        depends_lib-append      port:jack port:fluidsynth port:portaudio
-        configure.args-delete   --disable-jack --disable-fluidsynth
-        configure.args-append   --enable-jack --enable-fluidsynth
+    variant jack description {Enable jack plugin for audio output} {
+        depends_lib-append      port:jack port:portaudio
+        configure.args-delete   --disable-jack
+        configure.args-append   --enable-jack
     }
 
     variant dbus description {Enable DBus support} {
@@ -533,6 +527,9 @@ if {(${subport} eq ${name}) || (${subport} eq "lib${name}")} {
             system "${prefix}/lib/vlc/vlc-cache-gen -f ${prefix}/lib/vlc"
         }
     }
+# outcomment when the port:fluid-soundfont* ports have been made available
+#     notes-append "MIDI support requires installing one or more SoundFont files,\
+#         in ${prefix}/share/sounds/sf2, for instance from one of the port:fluid-soundfont-* ports"
 }
 
 ##

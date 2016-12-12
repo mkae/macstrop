@@ -13,8 +13,8 @@ if {${subport} eq "${name}-gtk2"} {
     git.branch      438553dfa702c43240257fe61935c9ab10563cc2
     version         ${qtc_version}.263
 } else {
-    git.branch      110a3d3b1f60fa151768de766b65d59d56925f5b
-    version         ${qtc_version}.269
+    git.branch      16eef6f91c3fe73ea7287e6dc66e87aaf91220d9
+    version         ${qtc_version}.270
 }
 
 
@@ -22,7 +22,7 @@ description         A set of widget styles for Qt4/KDE4, Qt5/KF5 and/or GTk2 bas
 
 platforms           darwin
 license             LGPL-2+
-maintainers         @RJVB mk
+maintainers         gmail.com:rjvbertin mk
 
 homepage            http://kde-look.org/content/show.php?content=40492
 master_sites        http://quickgit.kde.org/?p=qtcurve.git
@@ -35,23 +35,7 @@ PortGroup           muniversal 1.0
 
 test.run            yes
 
-subport ${name}-qt5 {
-    if {![variant_isset qtonly]} {
-        long_description        A highly configurable widget style for Qt5/KF5
-    } else {
-        long_description        A highly configurable widget style for Qt5
-    }
-}
-
-if {${os.platform} eq "darwin" && ${os.major} <= 10} {
-#     variant libcxx description {build against libc++ (untested)} {
-#         PortGroup           cxx11 1.0
-#     }
-    if {![variant_exists libcxx] || ![variant_isset libcxx]} {
-        depends_build-delete    port:clang-3.4 port:clang-3.5
-        ui_msg "This port only builds with configure.compiler=macports-gcc-4.7 (from port:gcc47) or newer on OS X 10.6"
-    }
-}
+subport ${name}-qt5 {}
 
 subport ${name}-gtk2 {
     PortGroup               cmake 1.1
@@ -83,6 +67,7 @@ subport ${name}-gtk2 {
             configure.ldflags-append        -fuse-linker-plugin
         }
     }
+    depends_build-append    port:pkgconfig
     depends_lib-append      port:gtk2
     depends_run-append      port:perl5
     configure.args-delete   -DQTC_ENABLE_X11:BOOL=OFF
@@ -155,7 +140,7 @@ if {(${subport} ne "${name}-gtk2") && (${subport} ne "${name}-extra")} {
             configure.args-append   -DPYTHON_EXECUTABLE=${prefix}/bin/python${kf5::pyversion} \
                                     -DQTC_QT5_ENABLE_KDE:BOOL=ON
             if {![variant_isset devel]} {
-                kf5.allow_docs_generation no
+                kf5.allow_apidocs_generation no
             }
             platform darwin {
                 notes-append        "Install port:kf5-osx-integration and set KDE_SESSION_VERSION to 5 \
@@ -177,6 +162,11 @@ if {(${subport} ne "${name}-gtk2") && (${subport} ne "${name}-extra")} {
             cmake.install_rpath-prepend \
                                     ${qt_libs_dir}
             configure.args-append   -DQTC_QT5_ENABLE_KDE:BOOL=OFF
+            # if and when port:qt5-kde is committed we can add the QtSvg
+            # dependency in a more elegant fashion, using qt5.depends_components.
+            if {![info exists qt5.using_kde] || !${qt5.using_kde}} {
+                depends_lib-append  port:qt5-qtsvg
+            }
         }
 
         # CMake will look for automoc4, but will of course not use it.
@@ -201,7 +191,7 @@ if {(${subport} ne "${name}-gtk2") && (${subport} ne "${name}-extra")} {
                                 -DQTC_QT5_ENABLE_KDE:BOOL=OFF -DQTC_UTILSLIB_INFIX:STRING="-qt4"
 
         notes-append "To access QtCurve and other KDE styles from pure Qt4 applications, execute
-         ln -s ${prefix}/lib/kde4/plugins/styles ${prefix}/share/qt4/plugins
+         ln -s ${prefix}/lib/kde4/plugins/styles ${qt_plugins_dir}
          with the appropriate privileges"
     }
 
@@ -221,9 +211,9 @@ if {(${subport} ne "${name}-gtk2") && (${subport} ne "${name}-extra")} {
         post-destroot {
             if {${subport} eq "${name}-qt5"} {
             } else {
-                xinstall -d -m 755 ${destroot}${prefix}/share/qt4/plugins
                 if {[file exists ${qt_plugins_dir}] && ![file exists ${qt_plugins_dir}/styles]} {
-                    system "ln -s ${prefix}/lib/kde4/plugins/styles ${destroot}${qt_plugins_dir}/"
+                    xinstall -d -m 755 ${destroot}${qt_plugins_dir}
+                    ln -s ${prefix}/lib/kde4/plugins/styles ${destroot}${qt_plugins_dir}
                 }
             }
         }
@@ -233,5 +223,10 @@ if {(${subport} ne "${name}-gtk2") && (${subport} ne "${name}-extra")} {
 
 # never strip binaries for more useful backtraces
 configure.args-append           -DCMAKE_STRIP:FILEPATH=/bin/echo
+
+if {${os.platform} eq "darwin" && ${os.major} < 13 && ${subport} ne "${name}-extra"} {
+    long_description-append \n\
+        This port requires the libc++ conversion but should also build with GCC 4.7 or later (configure.compiler=macports-gcc-4.7).
+}
 
 # kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax Tcl/Tk; tab-indents true; tab-width 4;

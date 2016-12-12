@@ -12,7 +12,7 @@ set kf5.virtualPath applications
 set kf5.category    utilities
 PortGroup           kf5 1.1
 
-maintainers         @RJVB mk openmaintainer
+maintainers         gmail.com:rjvbertin mk openmaintainer
 
 description         Provides kfind and konqueror, a web browser aka universal viewer aka file manager for KF5.
 long_description    This port provides KFind (KDE's file find utility) and Konqueror, one of the most advanced file \
@@ -83,7 +83,7 @@ depends_lib-append  port:tidy \
                     port:zlib
 depends_run-append  port:kf5-kio-extras
 
-kf5.allow_docs_generation no
+kf5.allow_apidocs_generation no
 
 patch.pre_args      -Np1
 patchfiles-append   patch-preserve-window-icon.diff \

@@ -10,7 +10,7 @@ PortGroup           kf5 1.1
 # kf5.use_latest      applications
 
 name                kf5-khelpcentre
-maintainers         @RJVB mk openmaintainer
+maintainers         gmail.com:rjvbertin mk openmaintainer
 
 installs_libs       no
 
@@ -29,7 +29,7 @@ depends_build-append \
                     ${kf5::oxygen-icons_dep}
 depends_run-append  port:kf5-kio-extras
 
-kf5.allow_docs_generation no
+kf5.allow_apidocs_generation no
 
 patchfiles-append \
                     patch-preserve-window-icon.diff \

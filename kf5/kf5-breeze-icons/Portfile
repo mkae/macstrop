@@ -20,7 +20,7 @@ if {${kf5.latest_version} ne ${kf5.version}} {
                     sha256  ffc1b79a96b909dca07f418fc443cfdd1deeebe1ec3cdf0e7cede9a4e6765c89
 }
 
-maintainers         @RJVB mk openmaintainer
+maintainers         gmail.com:rjvbertin mk openmaintainer
 
 installs_libs       no
 supported_archs     noarch
@@ -59,7 +59,7 @@ if {[info exists qt5_dependency]} {
 }
 
 # Qt documentation for this package makes no sense
-kf5.allow_docs_generation no
+kf5.allow_apidocs_generation no
 
 livecheck.type      regex
 livecheck.version   ${kf5.branch}

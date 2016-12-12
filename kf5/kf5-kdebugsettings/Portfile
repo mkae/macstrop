@@ -10,7 +10,7 @@ set kf5.category    utilities
 PortGroup           kf5 1.1
 # kf5.use_latest      applications
 
-maintainers         @RJVB mk openmaintainer
+maintainers         gmail.com:rjvbertin mk openmaintainer
 
 installs_libs       no
 
@@ -26,7 +26,7 @@ kf5.depends_frameworks \
                     kdbusaddons kguiaddons ki18n \
                     kiconthemes kio kitemviews kwidgetsaddons
 
-kf5.allow_docs_generation no
+kf5.allow_apidocs_generation no
 
 patchfiles-append \
                 patch-add-icon.diff

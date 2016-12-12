@@ -11,7 +11,7 @@ set kf5.category    graphics
 PortGroup           kf5 1.1
 # kf5.use_latest      applications
 
-maintainers         @RJVB mk openmaintainer
+maintainers         gmail.com:rjvbertin mk openmaintainer
 
 description         a free and open source painting program.
 long_description    Krita is a free and open source painting program. \
@@ -51,7 +51,7 @@ kf5.depends_frameworks \
                     kguiaddons ki18n kio kitemmodels kitemviews \
                     kwidgetsaddons kwindowsystem
 
-kf5.allow_docs_generation no
+kf5.allow_apidocs_generation no
 
 platform darwin {
     conflicts calligra

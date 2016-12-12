@@ -60,11 +60,11 @@ depends_lib-append \
                     port:libofx \
                     port:qca-qt5
 
-maintainers         @RJVB mk openmaintainer
+maintainers         gmail.com:rjvbertin mk openmaintainer
 homepage            https://skrooge.org
 conflicts-append    skrooge
 
-kf5.allow_docs_generation no
+kf5.allow_apidocs_generation no
 
 patch.pre_args      -Np1
 patchfiles-append   patch-use-prefix.diff \

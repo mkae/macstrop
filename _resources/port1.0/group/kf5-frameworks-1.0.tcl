@@ -76,6 +76,17 @@ namespace eval kf5 {
         variable pythondep   bin:python:python27
     }
 
+    variable dbus_start_warning_printed no
+
+    # wrapper meant to draw the user's attention to the fact that this port has notes
+    # that are of interest before installation. Print the banner once only for every port
+    # that has such notes.
+    proc add_warning_note {msg} {
+        global subport
+        ui_warn_once "kf5::warning_note-${subport}" ">>> Please read the notes before installing (port notes ${subport})! <<<\n"
+        ui_info ${msg}
+        notes-append ${msg}
+    }
 
     # variables to facilitate setting up dependencies to KF5 frameworks that may (or not)
     # also exist as port:kf5-foo-devel .
@@ -83,18 +94,18 @@ namespace eval kf5 {
     # kf5.framework_runtime_dependency{name {executable 0}} and kf5.depends_run_frameworks
     # (which would have to add a library dependency if no executable dependency is defined).
     proc framework_dependency {name {library 0} {soversion 5}} {
-        namespace upvar ::kf5 ${name}_dep dep
+        namespace upvar ::kf5 ${name}_dep kdep
         namespace upvar ::kf5 ${name}_lib lib
         if {${library} ne 0} {
             global os.platform build_arch
-            if {${os.platform} eq "darwin"} {
+            ifplatform darwin {
                 set lib_path        lib
                 if {${soversion} ne ""} {
                     set lib_ext     5.dylib
                 } else {
                     set lib_ext     dylib
                 }
-            } elseif {${os.platform} eq "linux"} {
+            } else {
                 set lib_path        lib/${build_arch}-linux-gnu
                 if {${soversion} ne ""} {
                     set lib_ext     so.5
@@ -103,11 +114,38 @@ namespace eval kf5 {
                 }
             }
             set lib                 ${lib_path}/${library}.${lib_ext}
-            set dep                 path:${lib}:kf5-${name}
-            ui_debug "Dependency expression for KF5ramework ${name}: ${dep}"
+            set kdep                 path:${lib}:kf5-${name}
+            ui_debug "Dependency expression for KF5ramework ${name}: ${kdep}"
+            # no return value in this branch
         } else {
-            if {[info exists dep]} {
-                return ${dep}
+            if {[info exists kdep]} {
+                platform darwin {
+                    if {![catch {set nativeQSP [active_variants "${kdep}" nativeQSP]}]} {
+                        global subport
+                        if {${nativeQSP}} {
+                            # dependency is built for native QSP locations but the dependent port wants ALT (XDG) locations
+                            if {([variant_isset qspXDG] || ![variant_isset nativeQSP])} {
+                                kf5::add_warning_note "Warning: ${subport} potential mismatch with kf5-${name}+nativeQSP"
+                            }
+                        } elseif {[variant_isset nativeQSP]} {
+                            # dependency is built for ALT (XDG) QSP locations but the dependent port wants to use native locations
+                            kf5::add_warning_note "Warning: ${subport}+nativeQSP potential mismatch with kf5-${name} (-nativeQSP)"
+                        }
+                    }
+                    if {[lsearch {"baloo" "kactivities" "kdbusaddons" "kded" "kdelibs4support-devel" "kglobalaccel" "kio"
+                                    "kservice" "kwallet" "kwalletmanager" "plasma-framework"} ${name}] ne "-1"} {
+                        if {!${kf5::dbus_start_warning_printed}} {
+                            notes-append "
+                                Don't forget that dbus needs to be started as the local\
+                                user (not with sudo) before any KDE programs will launch.
+                                To start it run the following command:
+                                 launchctl load -w /Library/LaunchAgents/org.freedesktop.dbus-session.plist
+                                "
+                            set kf5::dbus_start_warning_printed yes
+                        }
+                    }
+                }
+                return ${kdep}
             } else {
                 set allknown [string map {"::kf5::" "" "_dep" ""} [info vars "::kf5::*_dep"]]
                 ui_error "No KF5 framework is known corresponding to \"${name}\""
@@ -132,32 +170,8 @@ proc kf5.depends_frameworks {first args} {
     # join ${first} and (the optional) ${args}
     set args [linsert $args[set list {}] 0 ${first}]
     foreach f ${args} {
-        set kdep [kf5::framework_dependency ${f}]
-        if {![catch {set nativeQSP [active_variants "${kdep}" nativeQSP]}]} {
-            global subport
-            if {${nativeQSP}} {
-                # dependency is built for native QSP locations but the dependent port wants ALT (XDG) locations
-                if {([variant_isset qspXDG] || ![variant_isset nativeQSP])} {
-                    ui_msg "Warning: ${subport} potential mismatch with kf5-${f}+nativeQSP"
-                }
-            } elseif {[variant_isset nativeQSP]} {
-                # dependency is built for ALT (XDG) QSP locations but the dependent port wants to use native locations
-                ui_msg "Warning: ${subport}+nativeQSP potential mismatch with kf5-${f} (-nativeQSP)"
-            }
-        }
         depends_lib-append \
-                        ${kdep}
-        platform darwin {
-            if {[lsearch {"baloo" "kactivities" "kdbusaddons" "kded" "kdelibs4support-devel" "kglobalaccel" "kio"
-                            "kservice" "kwallet" "kwalletmanager" "plasma-framework"} ${f}] ne "-1"} {
-                notes "
-                    Don't forget that dbus needs to be started as the local\
-                    user (not with sudo) before any KDE programs will launch.
-                    To start it run the following command:
-                     launchctl load -w /Library/LaunchAgents/org.freedesktop.dbus-session.plist
-                    "
-            }
-        }
+                        [kf5::framework_dependency ${f}]
     }
     if {[lsearch -exact ${args} "ki18n"] ne "-1"} {
         kf5::has_translations
@@ -246,7 +260,11 @@ kf5::framework_dependency    knotifyconfig libKF5NotifyConfig
 kf5::framework_dependency    plasma-framework libKF5Plasma
 kf5::framework_dependency    kjs libKF5JS
 kf5::framework_dependency    khtml libKF5KHtml
+kf5::framework_dependency    kross libKF5KrossCore
 kf5::framework_dependency    krunner libKF5Runner
 kf5::framework_dependency    kwayland libKF5WaylandClient
+
+# not a framework; use the procedure to define the path-style dependency
+kf5::framework_dependency    cli-tools libkdeinit5_kcmshell5 ""
 
 # kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax MacPorts/Portfile; tab-indents true; tab-width 4;

@@ -10,7 +10,7 @@ set kf5.category    education
 # kf5.use_latest      applications
 PortGroup           kf5 1.1
 
-maintainers         @RJVB mk openmaintainer
+maintainers         gmail.com:rjvbertin mk openmaintainer
 
 installs_libs       no
 
@@ -72,7 +72,7 @@ ifplatform darwin {
                     port:drumstick
 }
 
-kf5.allow_docs_generation no
+kf5.allow_apidocs_generation no
 
 patch.pre_args      -Np1
 
