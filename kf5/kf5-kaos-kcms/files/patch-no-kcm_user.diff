@@ -1,0 +1,11 @@
+diff --git a/src/modules/CMakeLists.txt b/src/modules/CMakeLists.txt
+index 9c3d0fd..8e5576b 100644
+--- a/src/modules/CMakeLists.txt
++++ b/src/modules/CMakeLists.txt
+@@ -1,2 +1,4 @@
+ add_subdirectory(locale)
+-add_subdirectory(users)
++if(NOT APPLE)
++    add_subdirectory(users)
++endif()
+

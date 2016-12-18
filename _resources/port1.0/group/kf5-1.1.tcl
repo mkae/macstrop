@@ -161,7 +161,7 @@ if {${kf5::includecounter} == 0} {
     #depends_lib-append      port:phonon
 
     # This is used by all KF5 frameworks
-    depends_lib-append      path:share/ECM/cmake/ECMConfig.cmake:kde-extra-cmake-modules
+    depends_build-append    path:share/ECM/cmake/ECMConfig.cmake:kde-extra-cmake-modules
 
     # configure.args-append   -G "\"CodeBlocks - Unix Makefiles\""
 
@@ -218,6 +218,10 @@ if {${kf5::includecounter} == 0} {
     options kf5.allow_apidocs_generation
     default kf5.allow_apidocs_generation {yes}
 
+    variant chm requires docs description {when building the API documentation, also create a .chm version} {
+        depends_build-append \
+                            port:chmcmd-fpc
+    }
     variant docs description {build and install the API documentation, for use with Qt's Assistant and KDevelop} {
         configure.args-delete \
                             -DBUILD_doc=OFF \
@@ -246,27 +250,38 @@ if {${kf5::includecounter} == 0} {
                     # generate the documentation, working from ${build.dir}
                     file delete -force ${workpath}/apidocs
                     xinstall -m 755 -d ${workpath}/apidocs
+                    if {[variant_exists chm] && [variant_isset chm]} {
+                        set chmargs "--chm --chmcompiler ${prefix}/bin/chmcmd"
+                    } else {
+                        set chmargs ""
+                    }
                     # this appears to be necessary, sometimes:
                     system "chmod 755 ${workpath}/apidocs"
                     if {[info exists kf5.framework]} {
-                        if {[catch {system -W ${build.dir} "kapidox_generate --qhp --searchengine --api-searchbox \
-                            --qtdoc-dir ${qt_docs_dir} --qhelpgenerator ${qt_bins_dir}/qhelpgenerator ${worksrcpath}"} result context]} {
+                        if {[catch {system -W ${build.dir} "kapidox_generate --qhp --searchengine --api-searchbox --indexing \
+                            ${chmargs} \
+                            --qtdoc-dir ${qt_docs_dir} --qhelpgenerator ${qt_bins_dir}/qhelpgenerator \
+                            ${worksrcpath}"} result context]} {
                             ui_msg "Failure generating documentation: ${result}"
                         }
                         # after creating the destination, copy all generated qch documentation to it
-                        foreach doc [glob -nocomplain ${build.dir}/frameworks/*/qch/*.qch ${build.dir}/*/qch/*.qch] {
+                        foreach doc [glob -nocomplain ${build.dir}/frameworks/*/qch/*.qch \
+                                ${build.dir}/*/qch/*.qch ${build.dir}/*/html/*.chm] {
                             if {[file tail ${doc}] ne "None.qch"} {
+                                system "chmod 644 ${doc}"
                                 xinstall -m 644 ${doc} ${workpath}/apidocs/
                             }
                         }
                         file delete -force ${build.dir}/${kf5.framework}-${version}
                     } else {
                         system -W ${build.dir} "kgenapidox --qhp --searchengine --api-searchbox \
+                            ${chmargs} \
                             --qtdoc-dir ${qt_docs_dir} --kdedoc-dir ${kf5.docs_dir} \
                             --qhelpgenerator ${qt_bins_dir}/qhelpgenerator ${worksrcpath}"
                         # after creating the destination, copy all generated qch documentation to it
-                        foreach doc [glob -nocomplain ${build.dir}/apidocs/qch/*.qch] {
+                        foreach doc [glob -nocomplain ${build.dir}/apidocs/qch/*.qch  ${build.dir}/apidocs/html/*.chm] {
                             if {[file tail ${doc}] ne "None.qch"} {
+                                system "chmod 644 ${doc}"
                                 xinstall -m 644 ${doc} ${workpath}/apidocs/
                             }
                         }
@@ -279,6 +294,10 @@ if {${kf5::includecounter} == 0} {
                     system "chmod 755 ${destroot}${kf5.docs_dir}"
                     foreach doc [glob -nocomplain ${workpath}/apidocs/*.qch] {
                         xinstall -m 644 ${doc} ${destroot}${kf5.docs_dir}
+                    }
+                    if {[file exists ${workpath}/apidocs/kapidox.chm]} {
+                        set doc [string map {".qch" ".chm"} [file tail ${doc}]]
+                        xinstall -m 644 ${workpath}/apidocs/kapidox.chm ${destroot}${kf5.docs_dir}/${doc}
                     }
                 }
             }
