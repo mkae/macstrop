@@ -1,0 +1,158 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+# $Id$
+# Copyright (c) 2015, 2016 R.J.V. Bertin
+
+PortSystem          1.0
+
+set kf5.project     calligra
+set kf5.virtualPath applications
+set kf5.category    office
+set kf5.dont_use_xz 1
+PortGroup           kf5 1.1
+
+maintainers         gmail.com:rjvbertin mk openmaintainer
+name                kf5-calligra-suite
+version             3.0.0
+distname            ${kf5.project}-${version}
+
+description         KDE Calligra Suite
+conflicts           calligra
+
+master_sites        http://download.kde.org/stable/${distname}
+checksums           rmd160  74df94e896c58071d2a40822b7308ef537984233 \
+                    sha256  79490a61e876767cb10c9605f48104c3d8b91f76a607424d14ec4c73c0eff0b2
+
+kf5.allow_apidocs_generation no
+patch.pre_args      -Np1
+
+if {${subport} eq ${name}} {
+    long_description \
+                    This meta-port pulls in Calligra's components.
+    homepage        http://www.calligra.org
+    installs_libs   no
+    supported_archs noarch
+    distfiles
+    fetch {}
+    checksum {}
+    extract {}
+    use_configure   no
+    build {}
+    destroot {
+        xinstall -d -m 755 ${destroot}${prefix}/share/doc/kf5-installed-meta-ports
+        system "touch ${destroot}${prefix}/share/doc/kf5-installed-meta-ports/${subport}"
+    }
+} else {
+    # shared dependencies
+    platform darwin {
+        depends_lib-append \
+                    port:freetype \
+                    port:fontconfig \
+                    port:lcms2 \
+                    port:zlib \
+                    port:gsl \
+                    port:libvisio-0.1
+    }
+    depends_lib-append \
+                    port:boost \
+                    port:eigen3 \
+                    port:Vc \
+                    port:shared-mime-info \
+                    port:poppler-qt5 \
+                    port:libgit2 \
+                    port:libiconv \
+                    port:phonon-qt5 \
+                    port:qca-qt5 \
+                    port:librevenge \
+                    port:libodfgen \
+                    port:libwpd-0.10 \
+                    port:libwpg-0.3 \
+                    port:libwps \
+                    port:libetonyek \
+                    port:openexr \
+                    port:kf5-kcalcore \
+                    path:${kf5.libs_dir}/libOkular5Core.${kf5::libs_ext}:kf5-okular \
+                    port:kf5-kpropertywidgets \
+                    port:kf5-kreport
+
+    kf5.depends_qt5_components \
+                    qtdeclarative qtwebkit
+    kf5.depends_frameworks \
+                    kactivities karchive kcmutils kcodecs kcompletion \
+                    kconfig kconfigwidgets kcoreaddons kdbusaddons \
+                    kguiaddons khtml ki18n kiconthemes kitemviews \
+                    kdelibs4support kio knotifications knotifyconfig \
+                    kross kparts ktexteditor ktextwidgets \
+                    kwallet kwidgetsaddons kwindowsystem \
+                    kxmlgui sonnet threadweaver
+    variant maps description {include support for maps using port:kf5-marble} {}
+    if {[variant_isset maps]} {
+        depends_lib-append \
+                    port:kf5-marble
+    } else {
+        configure.args-append \
+                    -DWITH_Marble=OFF
+    }
+    patchfiles-append \
+                    patch-general-cmakelist.diff
+    configure.args-append \
+                    -DWITH_KGantt=OFF -DWITH_KChart=OFF
+}
+
+# given the size of the source directory we'll try our best to share as much as possible
+# between subports.
+# SADLY this messes up `port work foo` :-/
+# set parentworkpath  [join [lrange [split ${workpath} "/"] 0 end-2] "/"]
+# set workpath        "${parentworkpath}/${kf5.project}/work"
+# set worksrcpath     "${workpath}/${distname}"
+
+proc set_work_paths {dir} {
+    global workpath worksrcdir worksrcpath configure.dir build.dir configure.post_args
+    cmake.source_dir    ${worksrcpath}/${dir}
+    cmake.build_dir     ${workpath}/build-${dir}
+    ui_info "worksrcdir=${worksrcdir}"
+    ui_info "worksrcpath=${worksrcpath}"
+    ui_info "configure.dir=${configure.dir}"
+    ui_info "build.dir=${build.dir}"
+    ui_info "configure.post_args=${configure.post_args}"
+}
+
+subport kf5-calligra-common {
+    long_description \
+                    Calligra shared components
+    configure.args-append \
+                    -DRELEASE_BUILD=ON \
+                    -DPRODUCTSET="LIB_KOVECTORIMAGE \
+                        LIB_CALLIGRA \
+                        LIB_KOMAIN \
+                        LIB_KOODFREADER \
+                        LIB_MSO \
+                        LIB_KOMSOOXML \
+                        FEATURE_SCRIPTING \
+                        PLUGIN_TEXTSHAPE \
+                        APP_CONVERTER \
+                        FILEMANAGER \
+                        APP_DEVTOOLS"
+}
+
+subport kf5-karbon {
+    long_description \
+                    Karbon is Calligra's vector graphics application.
+
+    kf5.depends_frameworks \
+                    karchive kconfig kcrash kdbusaddons \
+                    ki18n kiconthemes kio kservice kparts \
+                    kpty kwidgetsaddons
+    depends_lib-append \
+                    port:kf5-calligra-common
+
+    configure.args-append \
+                    -DPRODUCTSET=karbon \
+                    -DRELEASE_BUILD=ON
+
+    post-destroot {
+        kf5.add_app_wrapper karbon5 karbon
+    }
+}
+
+livecheck.url       http://download.kde.org/stable
+livecheck.regex     calligra\\-(\\d+\\.\\d+\\.\\d)

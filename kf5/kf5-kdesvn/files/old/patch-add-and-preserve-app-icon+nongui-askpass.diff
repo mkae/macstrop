@@ -1,0 +1,66 @@
+diff --git a/src/kdesvn_part.cpp b/src/kdesvn_part.cpp
+index 262ba33..39a9343 100644
+--- a/src/kdesvn_part.cpp
++++ b/src/kdesvn_part.cpp
+@@ -292,7 +292,7 @@ void kdesvnpart::showAboutApplication()
+         about.addAuthor(QStringLiteral("Rajko Albrecht"), i18n("Original author and maintainer"), QStringLiteral("ral@alwins-world.de"));
+         about.addAuthor(QStringLiteral("Christian Ehrlicher"), i18n("Developer"), QStringLiteral("ch.ehrlicher@gmx.de"));
+         about.setHomepage("https://commits.kde.org/kdesvn");
+-        qApp->setWindowIcon(QIcon::fromTheme(QStringLiteral("kdesvn")));
++        qApp->setWindowIcon(QIcon::fromTheme(QStringLiteral("kdesvn"), qApp->windowIcon()));
+         m_aboutDlg = new KAboutApplicationDialog(about);
+     }
+     if (m_aboutDlg == 0) {
+diff --git a/src/main.cpp b/src/main.cpp
+index 8577e9c..739f252 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -38,7 +38,7 @@ int main(int argc, char **argv)
+     app.setApplicationDisplayName("kdesvn");
+     app.setOrganizationDomain("kde.org");
+     app.setApplicationVersion(KDESVN_VERSION);
+-    app.setWindowIcon(QIcon::fromTheme(QLatin1String("kdesvn")));
++    app.setWindowIcon(QIcon::fromTheme(QLatin1String("kdesvn"), app.windowIcon()));
+ 
+     KAboutData aboutData(QLatin1String("kdesvn"), i18n("kdesvn"), QString(KDESVN_VERSION), i18n(description),
+                          KAboutLicense::GPL, i18n("(C) 2005-2009 Rajko Albrecht"));
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 008fe95..189b5cb 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -18,7 +18,11 @@
+  #   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         #
+  ####
+ 
++include(ECMMarkNonGuiExecutable)
++include(ECMAddAppIcon)
++
+ add_executable(kdesvnaskpass askpass/kdesvn-askpass.cpp)
++ecm_mark_nongui_executable(kdesvnaskpass)
+ 
+ ki18n_wrap_ui(kdesvn_ui
+     urldlg.ui
+@@ -30,6 +34,23 @@ set(kdesvnsrc
+     urldlg.cpp
+ )
+ 
++# Sets the icon on Windows and OSX
++find_program(KSVG2ICNS NAMES ksvg2icns)
++if(APPLE AND KSVG2ICNS)
++    execute_process(COMMAND ${KSVG2ICNS} "${CMAKE_CURRENT_SOURCE_DIR}/icons/sc-apps-kdesvn.svgz"
++         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} RESULT_VARIABLE KSVG2ICNS_ERROR)
++    if(${KSVG2ICNS_ERROR})
++        message(SEND_ERROR "Could not generate OS X application icon")
++    else()
++        set(MACOSX_BUNDLE_ICON_FILE sc-apps-kdesvn.icns)
++        set(kdesvnsrc "${kdesvnsrc};${CMAKE_CURRENT_BINARY_DIR}/sc-apps-kdesvn.icns")
++        set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/sc-apps-kdesvn.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
++    endif()
++else()
++    file(GLOB ICONS_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/icons/*-apps-kdesvn.png")
++    ecm_add_app_icon(kdesvnsrc ICONS ${ICONS_SRCS})
++endif()
++
+ set(partsrc
+     commandline_part.cpp
+     kdesvn_part.cpp
