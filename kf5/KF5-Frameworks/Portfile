@@ -9,7 +9,7 @@ PortGroup           code-sign 1.0
 
 name                KF5-Frameworks
 version             ${kf5.version}
-set kf5::cat        Frameworks
+set kf5::cat        KF5-Frameworks
 categories-append   ${kf5::cat}
 description         meta-port for the KDE Frameworks Version ${kf5.version}
 long_description    ${description}
@@ -22,8 +22,10 @@ if {${os.platform} eq "darwin"} {
     test.run        yes
 }
 
-# we use 
-if {${kf5.latest_version} ne ${kf5.version}} {
+# check what frameworks version we will use; kf5.version or kf5.latest_version
+# if it's different and the user enabled the alternative (for port devs. only!).
+if {[file exists ${filespath}/upgrading-to-latest.tcl]} {
+#     source ${filespath}/upgrading-to-latest.tcl
     kf5.use_latest  kf5.version
     version         ${kf5.version}
     set checksums.table \
@@ -125,8 +127,6 @@ proc check_kde4_header {header conflictport} {
 ### === Tier 1 ===
 
 subport kf5-attica {
-    # testing new install location for "camelCase" headers
-    revision        1
     description     Open Collaboration Service client library
     long_description \
                     Attica is a Qt library that implements the Open Collaboration Services API version 1.6 .
@@ -202,6 +202,8 @@ subport kf5-kapidox {
 }
 
 subport kf5-kapidox-devel {
+    replaced_by     kf5-kapidox
+    PortGroup       obsolete 1.0
     description     KDE Doxygen Tools
     long_description \
                     The -devel version of port:kf5-kapidox.
@@ -337,8 +339,6 @@ subport kf5-kcodecs {
     set kf5.framework \
                     kcodecs
     kf5::set_checkums
-    kf5.depends_qt5_components \
-                    qttools
 }
 
 subport kf5-kconfig {
@@ -356,12 +356,9 @@ subport kf5-kconfig {
     post-patch {
         reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/src/core/kconfig.cpp
     }
-    kf5.depends_qt5_components \
-                    qttools
 }
 
 subport kf5-kcoreaddons {
-    revbump_for_version 1 5.27.0 darwin
     description     Qt addon library with a collection of non-GUI utilities
     long_description \
                     KCoreAddons provides classes built on top of QtCore to perform various tasks \
@@ -374,15 +371,13 @@ subport kf5-kcoreaddons {
     kf5::set_checkums
     depends_lib-append \
                     port:shared-mime-info
-    # https://git.reviewboard.kde.org/r/129267/
-    patchfiles-append \
-                    kcoreaddons/patch-add-posix_fallocate.diff
+#    # https://git.reviewboard.kde.org/r/129267/
+#    versioned_patchfile_append \
+#                    kcoreaddons patch-add-posix_fallocate.diff
     platform darwin {
         configure.args-append \
                     -DKDE4_DEFAULT_HOME=Library/Preferences/KDE
     }
-    kf5.depends_qt5_components \
-                    qttools
 }
 
 subport kf5-kdbusaddons {
@@ -394,8 +389,6 @@ subport kf5-kdbusaddons {
     set kf5.framework \
                     kdbusaddons
     kf5::set_checkums
-    kf5.depends_qt5_components \
-                    qttools
 }
 
 subport kf5-kdnssd {
@@ -416,8 +409,6 @@ subport kf5-kdnssd {
     }
     test.cmd        echo
     test.target     no tests for this framework
-    kf5.depends_qt5_components \
-                    qttools
 }
 
 subport kf5-kguiaddons {
@@ -466,7 +457,7 @@ subport kf5-kidletime {
     kf5::set_checkums
     patchfiles-append \
                     kidletime/patch-kidletime-use-iokit.diff \
-                    kidletime${PVERSION}/patch-kidletime-xsync.diff
+                    kidletime/patch-kidletime-xsync.diff
     if {[variant_isset docs]} {
         patchfiles-append \
                     kidletime/patch-kidletime-documentation.diff
@@ -518,8 +509,6 @@ subport kf5-kitemviews {
     set kf5.framework \
                     kitemviews
     kf5::set_checkums
-    kf5.depends_qt5_components \
-                    qttools
 }
 
 subport kf5-kplotting {
@@ -538,12 +527,6 @@ subport kf5-kplotting {
 }
 
 subport kf5-ksyntaxhighlighting {
-    # this is a sneak preview; KSyntaxHighlighting was released after 5.27.0
-    revbump_for_version 0 5.28.0
-    version         5.28.0
-    set kf5.version 5.28.0
-    set kf5.branch  5.28
-    kf5.set_paths
     description     A syntax highlighting engine for Kate syntax definitions
     long_description \
                     A stand-alone implementation of the Kate syntax highlighting engine. \
@@ -553,18 +536,29 @@ subport kf5-ksyntaxhighlighting {
                     More than 250 syntax definition files are included, additional ones are \
                     picked up from the file system if present, so you can easily extend this \
                     through application-specific syntax definitions for example.
-    set kf5.framework \
+    if {[vercmp ${version} 5.29.0] < 0} {
+        # this is a sneak preview; KSyntaxHighlighting was released after 5.27.0
+        revbump_for_version 0 5.28.0
+        version         5.28.0
+        set kf5.version 5.28.0
+        set kf5.branch  5.28
+        kf5.set_paths
+        set kf5.framework \
                     syntax-highlighting
-#     kf5::set_checkums
-    checksums       rmd160  bbdd78374f3fc548ac134ae5d872851dd26cc313 \
+        checksums   rmd160  bbdd78374f3fc548ac134ae5d872851dd26cc313 \
                     sha256  be3d4f730e8bfde843de393eeb6bd4842a052f0c438455de325b3d3269a3c13d
+        # http://commits.kde.org/syntax-highlighting/804f15240bdcbc2a4e11dd2c635e0bfb794f30e4
+        patchfiles-append \
+                    ksyntaxhighlighting/patch-ksyntaxhilite-nongui.diff
+    } else {
+        set kf5.framework \
+                    syntax-highlighting
+        kf5::set_checkums
+    }
     depends_build-append \
                     path:bin/perl5:perl5
     kf5.depends_qt5_components \
                     qtxmlpatterns
-    # http://commits.kde.org/syntax-highlighting/804f15240bdcbc2a4e11dd2c635e0bfb794f30e4
-    patchfiles-append \
-                    ksyntaxhighlighting/patch-ksyntaxhilite-nongui.diff
     post-destroot {
         xinstall -m 755 -d ${destroot}${prefix}/share/org.kde.syntax-highlighting/syntax
         xinstall -m 644 ${filespath}/ktexteditor/macports.xml ${destroot}${prefix}/share/org.kde.syntax-highlighting/syntax/
@@ -587,15 +581,13 @@ subport kf5-kwidgetsaddons {
                     kwidgetsaddons
     kf5::set_checkums
     platform darwin {
-        # http://commits.kde.org/kwidgetsaddons/d2bd8ef93783bc0f30de2db04bf5a95982cea864
-        patchfiles-append \
-                    kwidgetsaddons/patch-kwidgaddons-restrict-WId-usage.diff
+#        # http://commits.kde.org/kwidgetsaddons/d2bd8ef93783bc0f30de2db04bf5a95982cea864
+#        versioned_patchfile_append \
+#                    kwidgetsaddons patch-kwidgaddons-restrict-WId-usage.diff
     }
-    # http://commits.kde.org/kwidgetsaddons/40f46e66e136234bfb7aa60b732708c5f0573967
-    patchfiles-append \
-                    kwidgetsaddons/patch-kwidgaddons-preserve-window-icon.diff
-    kf5.depends_qt5_components \
-                    qttools
+#    # http://commits.kde.org/kwidgetsaddons/40f46e66e136234bfb7aa60b732708c5f0573967
+#    versioned_patchfile_append \
+#                    kwidgetsaddons patch-kwidgaddons-preserve-window-icon.diff
 }
 
 subport kf5-kwindowsystem {
@@ -660,11 +652,11 @@ subport kf5-kwindowsystem-devel {
     set kf5.framework \
                     kwindowsystem
     fetch.type      git
-# #     v4.100.0-rc1-165-ge7249de
-#     git.branch      e7249deae417cdf9fb2983b06aa118c4ae4e22df
-#     v4.100.0-rc1-177-g5f183e2
-    git.branch      5f183e29ad3b981195444e0b12f12cf631c68c27
-    version         ${version}.4.100.0.177
+# #     v4.100.0-rc1-177-g5f183e2
+#     git.branch      5f183e29ad3b981195444e0b12f12cf631c68c27
+#     v4.100.0-rc1-188-ge993b77
+    git.branch      e993b77c503bccf2ab68dc8a61abb633c6fcb8a0
+    version         ${version}.4.100.0.188
     platform darwin {
         test.cmd    echo
         test.target no tests for this framework
@@ -720,8 +712,6 @@ subport kf5-solid {
     }
     configure.args-append \
                     -DWITH_NEW_SOLID_JOB=ON
-    kf5.depends_qt5_components \
-                    qttools
 }
 
 subport kf5-sonnet {
@@ -754,8 +744,6 @@ subport kf5-sonnet {
         default_variants-append \
                     +aspell
     }
-    kf5.depends_qt5_components \
-                    qttools
 }
 
 subport kf5-threadweaver {
@@ -803,7 +791,7 @@ subport kf5-kauth {
     kf5::set_checkums
     # https://git.reviewboard.kde.org/r/126086/
     patchfiles-append \
-                    patch-kauth-osx.diff
+                    kauth${PVERSION}/patch-kauth-osx.diff
     kf5.depends_frameworks \
                     kcoreaddons
     ifplatform darwin {
@@ -822,8 +810,6 @@ subport kf5-kauth {
             }
         }
     }
-    kf5.depends_qt5_components \
-                    qttools
 }
 
 subport kf5-kcompletion {
@@ -844,8 +830,6 @@ subport kf5-kcompletion {
     kf5::set_checkums
     kf5.depends_frameworks \
                     kconfig kwidgetsaddons
-    kf5.depends_qt5_components \
-                    qttools
 }
 
 subport kf5-kcrash {
@@ -859,10 +843,11 @@ subport kf5-kcrash {
     kf5.depends_frameworks \
                     kcoreaddons kwindowsystem
     platform darwin {
-        # http://commits.kde.org/kcrash/4b8b7597421320bcb502cc0c36134e2f8d90aec9
-        patchfiles-append \
-                    patch-kcrash-dont-closeAllFDs.diff \
-                    patch-kcrash-no-display.diff
+#        # http://commits.kde.org/kcrash/4b8b7597421320bcb502cc0c36134e2f8d90aec9
+#        versioned_patchfile_append \
+#                    kcrash patch-kcrash-dont-closeAllFDs.diff
+#        versioned_patchfile_append \
+#                    kcrash patch-kcrash-no-display.diff
     }
 }
 
@@ -927,9 +912,9 @@ subport kf5-kfilemetadata {
     # reported upstream
 #     patchfiles-append \
 #                     kfilemetadata/patch-kfilemdata-compversion5.diff
-    # http://commits.kde.org/kfilemetadata/ce597d98de24d5456e7e05c0306a0498a5826723
-    patchfiles-append \
-                    kfilemetadata/patch-kfilemdata-findffmpeg.diff
+#    # http://commits.kde.org/kfilemetadata/ce597d98de24d5456e7e05c0306a0498a5826723
+#    versioned_patchfile_append \
+#                    kfilemetadata patch-kfilemdata-findffmpeg.diff
     kf5.kde4compat {
         # even in kde4compat mode we can be in conflict with port:kfilemetadata
         # if the KDE4 ports were installed without headerfile migration.
@@ -968,12 +953,9 @@ subport kf5-kjobwidgets {
                     patch-kjobwidgets-preserve-window-icon.diff
     test.cmd        echo
     test.target     no tests for this framework
-    kf5.depends_qt5_components \
-                    qttools
 }
 
 subport kf5-knotifications {
-    revbump_for_version 1 5.27.0
     description     Desktop notifications
     long_description \
                     KNotification is used to notify the user of an event. It covers feedback and \
@@ -1001,13 +983,11 @@ subport kf5-knotifications {
     # https://git.reviewboard.kde.org/r/126369/
     patchfiles-append \
                     knotifications/patch-knotifications-OSX-adaptations.diff
-    # fixed in 5.28:
-    patchfiles-append \
-                    knotifications/patch-fix-crash-notifybyaudio.diff
+#    # fixed in 5.28:
+#    versioned_patchfile_append \
+#                    knotifications patch-fix-crash-notifybyaudio.diff
     test.cmd        echo
     test.target     no tests for this framework
-    kf5.depends_qt5_components \
-                    qttools
 }
 
 subport kf5-kpackage {
@@ -1019,7 +999,7 @@ subport kf5-kpackage {
                     kpackage
     kf5::set_checkums
     kf5.depends_frameworks \
-                    karchive kconfig kcoreaddons ki18n
+                    karchive kcoreaddons ki18n
     # this one could be reported upstream:
     patchfiles-append \
                     patch-kpackage-autotests+tool-nogui.diff \
@@ -1036,6 +1016,8 @@ subport kf5-kpty {
     set kf5.framework \
                     kpty
     kf5::set_checkums
+    depends_build-append \
+                    ${kf5::pythondep}
     kf5.depends_frameworks \
                     kcoreaddons ki18n
 }
@@ -1051,13 +1033,12 @@ subport kf5-kunitconversion {
                     kunitconversion
     kf5::set_checkums
     kf5.depends_frameworks \
-                    kconfig ki18n
+                    ki18n
 }
 
 ### === Tier 3 ===
 
 subport kf5-baloo {
-    revbump_for_version 1 5.27.0 darwin
     description     File searching and indexing
     long_description \
                     Baloo provides file searching and indexing. It does so by maintaining an index \
@@ -1067,6 +1048,8 @@ subport kf5-baloo {
     set kf5.framework \
                     baloo
     kf5::set_checkums
+    kf5.depends_qt5_components \
+                    qtdeclarative
     kf5.depends_frameworks \
                     kconfig kcoreaddons kcrash kdbusaddons \
                     kfilemetadata ki18n kidletime kio \
@@ -1111,11 +1094,10 @@ subport kf5-kactivities {
         depends_lib-append \
                     port:boost
     }
+    kf5.depends_qt5_components \
+                    qtdeclarative
     kf5.depends_frameworks \
-                    kbookmarks kcmutils kconfig kconfigwidgets \
-                    kcoreaddons kdbusaddons kdeclarative \
-                    kglobalaccel ki18n kio kpackage kservice \
-                    kwidgetsaddons kwindowsystem kxmlgui
+                    kconfig kcoreaddons kio kwindowsystem
     kf5.kde4compat {
         # note: it might be useful to provide a complementary variant to port:kactivities
         # really note: this is only required because of OS X's silly case-insensitive FS ...
@@ -1133,8 +1115,6 @@ subport kf5-kactivities {
     }
     test.cmd        echo
     test.target     no tests on OS X for this framework
-    kf5.depends_qt5_components \
-                    qtdeclarative
 }
 
 subport kf5-kbookmarks {
@@ -1146,10 +1126,8 @@ subport kf5-kbookmarks {
                     kbookmarks
     kf5::set_checkums
     kf5.depends_frameworks \
-                    kcodecs kconfigwidgets kcoreaddons \
+                    kcodecs kconfig kconfigwidgets kcoreaddons \
                     kiconthemes kwidgetsaddons kxmlgui
-    kf5.depends_qt5_components \
-                    qttools
 }
 
 subport kf5-kcmutils {
@@ -1160,6 +1138,8 @@ subport kf5-kcmutils {
     set kf5.framework \
                     kcmutils
     kf5::set_checkums
+    kf5.depends_qt5_components \
+                    qtdeclarative
     kf5.depends_frameworks \
                     kconfigwidgets kcoreaddons kdeclarative ki18n \
                     kiconthemes kitemviews kservice kxmlgui kpackage
@@ -1167,8 +1147,6 @@ subport kf5-kcmutils {
                     kcmutils/patch-kcmutils-khelpcentre5.diff
     test.cmd        echo
     test.target     no tests for this framework
-    kf5.depends_qt5_components \
-                    qtdeclarative
 }
 
 subport kf5-kconfigwidgets {
@@ -1179,12 +1157,14 @@ subport kf5-kconfigwidgets {
     set kf5.framework \
                     kconfigwidgets
     kf5::set_checkums
+    depends_build-append \
+                    ${kf5::pythondep}
     kf5.depends_frameworks \
                     kauth kconfig kcodecs kcoreaddons \
                     kdoctools kguiaddons ki18n kwidgetsaddons
-    # http://commits.kde.org/kconfigwidgets/2337f564969aabe5549f2caca006a71dce274e6a
-    patchfiles-append \
-                    patch-kconfigwidgets-kstdactions-menurole.diff
+#    # http://commits.kde.org/kconfigwidgets/2337f564969aabe5549f2caca006a71dce274e6a
+#    versioned_patchfile_append \
+#                    kconfigwidgets patch-kconfigwidgets-kstdactions-menurole.diff
 }
 
 subport kf5-kdeclarative {
@@ -1197,17 +1177,17 @@ subport kf5-kdeclarative {
     set kf5.framework \
                     kdeclarative
     kf5::set_checkums
+    kf5.depends_qt5_components \
+                    qtdeclarative
     kf5.depends_frameworks \
-                    kpackage kconfig kio \
-                    kiconthemes ki18n
+                    kpackage kconfig kglobalaccel kguiaddons kio \
+                    kiconthemes ki18n kwidgetsaddons kwindowsystem
     platform darwin {
         depends_lib-append \
                     port:libepoxy
     }
     patchfiles-append \
                     kdeclarative/patch-kdeclarative-nongui.diff
-    kf5.depends_qt5_components \
-                    qtdeclarative
 }
 
 subport kf5-kded {
@@ -1252,14 +1232,15 @@ subport kf5-kdesignerplugin {
     set kf5.framework \
                     kdesignerplugin
     kf5::set_checkums
-    qt5.depends_component \
-                     qtwebkit
+    kf5.depends_qt5_components \
+                    qtwebkit
     kf5.depends_frameworks \
-                    kconfig kcoreaddons kdewebkit kdoctools ki18n
+                    kconfig kconfigwidgets kcompletion kcoreaddons \
+                    kdewebkit kdoctools ki18n kiconthemes kio \
+                    kitemviews kplotting ktextwidgets \
+                    kwidgetsaddons kxmlgui sonnet
 #     test.cmd        echo
 #     test.target     no tests for this framework
-    kf5.depends_qt5_components \
-                    qttools
 }
 
 subport kf5-kdesu {
@@ -1267,12 +1248,13 @@ subport kf5-kdesu {
     long_description \
                     kf5-kdesu provides functionality for building GUI front ends for \
                     (password asking) console mode programs. For example, kdesu and \
-                    kdessh use it to interface with su and ssh respectively.
+                    kdessh use it to interface with su(do) and ssh respectively.
     set kf5.framework \
                     kdesu
     kf5::set_checkums
     kf5.depends_frameworks \
                     kcoreaddons ki18n kpty kservice
+    configure.args  -DKDESU_USE_SUDO_DEFAULT=On
 }
 
 subport kf5-kdewebkit {
@@ -1282,7 +1264,7 @@ subport kf5-kdewebkit {
     set kf5.framework \
                     kdewebkit
     kf5::set_checkums
-    qt5.depends_component \
+    kf5.depends_qt5_components \
                     qtwebkit
     # KDEWebKit doesn't declare an explicit dependency on KI18n but lets cmake pull it in through
     # automatically. We add it here so we don't have to add explicit depends_build on gettext and python.
@@ -1291,8 +1273,6 @@ subport kf5-kdewebkit {
                     kjobwidgets kparts kservice kwallet
     test.cmd        echo
     test.target     no tests for this framework
-    kf5.depends_qt5_components \
-                    qtwebkit
 }
 
 subport kf5-kemoticons {
@@ -1319,11 +1299,10 @@ subport kf5-kglobalaccel {
                     kglobalaccel
     kf5::set_checkums
     kf5.depends_frameworks \
-                    kconfig kcoreaddons kcrash kdbusaddons ki18n kservice
+                    kconfig kcoreaddons kcrash kdbusaddons \
+                    ki18n kwindowsystem kservice
     patchfiles-append \
                     patch-kglobalaccel-agent-and-nogui.diff
-    kf5.depends_qt5_components \
-                    qttools
 }
 
 subport kf5-kiconthemes {
@@ -1334,12 +1313,16 @@ subport kf5-kiconthemes {
     set kf5.framework \
                     kiconthemes
     kf5::set_checkums
+    depends_build-append \
+                    ${kf5::pythondep}
+    kf5.depends_qt5_components \
+                    qtsvg
     kf5.depends_frameworks \
-                    kconfigwidgets ki18n kitemviews kwidgetsaddons
+                    karchive kconfigwidgets kcoreaddons \
+                    ki18n kitemviews kwidgetsaddons
 }
 
 subport kf5-kinit {
-    revbump_for_version 1 5.27.0 darwin
     description     Helper library to speed up start of applications on KDE workspaces
     long_description \
                     kdeinit is a process launcher somewhat similar to the famous init used for \
@@ -1390,7 +1373,6 @@ subport kf5-kinit {
 }
 
 subport kf5-kio {
-    revbump_for_version 1 5.27.0 darwin
     description     Network transparent access to files and data
     long_description \
                     This framework implements almost all the file management functions you \
@@ -1419,8 +1401,10 @@ subport kf5-kio {
         # get the fallback smbd from MacPorts:
         reinplace "s|/usr/local/sbin/smbd|${prefix}/sbin/smbd|g" ${worksrcpath}/src/core/ksambashare.cpp
     }
+    kf5.depends_qt5_components \
+                    qtscript
     kf5.depends_frameworks \
-                    karchive kbookmarks kcompletion kconfigwidgets \
+                    karchive kbookmarks kcompletion kconfig kconfigwidgets \
                     kcoreaddons kcrash kdbusaddons kdoctools \
                     kguiaddons ki18n kiconthemes kitemviews \
                     kjobwidgets knotifications kservice ktextwidgets \
@@ -1429,18 +1413,19 @@ subport kf5-kio {
     patchfiles-append \
                     kio/patch-kio-nongui-kiod-and-agent.diff \
                     kio/patch-kio-nongui-httpcachecl.diff \
-                    kio/patch-kio-kioslave-silence-and-agent.diff \
-                    kio/patch-kioexec-agent.diff
+                    kio/patch-kio-kioslave-silence-and-agent.diff
+#    versioned_patchfile_append \
+#                    kio patch-kioexec-agent.diff
     patchfiles-append \
                     kio/patch-kio-preserve-window-icon.diff \
                     kio/patch-kio-khelpcentre5.diff
     # not a big success yet:
     patchfiles-append \
                     kio/patch-kio-kcookiejar-tofront.diff
-    # this was reviewed, accepted, committed and apparently removed (or the commit misfired)
-    # re-committed in 8bd14b31b85da723badb6ab910b25a097d82f077.
-    patchfiles-append \
-                    kio/patch-kio-use-osxtrash.diff
+#    # this was reviewed, accepted, committed and apparently removed (or the commit misfired)
+#    # re-committed in 8bd14b31b85da723badb6ab910b25a097d82f077.
+#    versioned_patchfile_append \
+#                    kio patch-kio-use-osxtrash.diff
     post-activate {
         # allow for signing the kioslave on OS X to avoid warnings in the system.log
         codesign ${prefix}/libexec/kde5/kf5/kioslave -
@@ -1456,14 +1441,16 @@ subport kf5-knewstuff {
     set kf5.framework \
                     knewstuff
     kf5::set_checkums
+    kf5.depends_qt5_components \
+                    qtdeclarative
     kf5.depends_frameworks \
                     attica karchive kcompletion kconfig \
                     kcoreaddons ki18n kiconthemes kio \
                     kitemviews kservice ktextwidgets \
                     kwidgetsaddons kxmlgui
-    # this one should probably be submitted upstream
+    # https://commits.kde.org/knewstuff/bb1476119ecb416305b5dec99dc270305a41f291
     patchfiles-append \
-                    knewstuff/patch-knewstuff-autotests.diff
+                    knewstuff${PVERSION}/patch-knewstuff-autotests.diff
 }
 
 subport kf5-knotifyconfig {
@@ -1475,8 +1462,10 @@ subport kf5-knotifyconfig {
     set kf5.framework \
                     knotifyconfig
     kf5::set_checkums
+    depends_lib-append \
+                    port:phonon-qt5
     kf5.depends_frameworks \
-                    kconfigwidgets ki18n kio \
+                    kcompletion kconfig kconfigwidgets ki18n kio \
                     knotifications kwidgetsaddons kxmlgui
     test.cmd        echo
     test.target     no tests for this framework
@@ -1493,8 +1482,9 @@ subport kf5-kparts {
     kf5::set_checkums
     # KParts depends on ki18n despite not declaring it explicitly
     kf5.depends_frameworks \
-                    ki18n kio knotifications \
-                    ktextwidgets kxmlgui
+                    kconfig kcoreaddons ki18n kiconthemes \
+                    kio kjobwidgets kservice ktextwidgets \
+                    kwidgetsaddons kxmlgui
     platform linux {
         # work around a compiler error
         configure.args-append \
@@ -1512,12 +1502,11 @@ subport kf5-kpeople {
     set kf5.framework \
                     kpeople
     kf5::set_checkums
-    # NB: kpeople can use Akonadi but it is unclear if the CMake files actually search for it.
+    kf5.depends_qt5_components \
+                    qtdeclarative
     kf5.depends_frameworks \
                     kcoreaddons ki18n kitemviews \
                     kservice kwidgetsaddons
-    kf5.depends_qt5_components \
-                    qtdeclarative
 }
 
 # the plasma framework can depend on akonadi and kdepimlibs!
@@ -1539,24 +1528,25 @@ subport kf5-plasma-framework {
     kf5::set_checkums
     depends_run-append \
                     path:bin/perl5:perl5
+    kf5.depends_qt5_components \
+                    qtsvg qtdeclarative
     kf5.depends_frameworks \
                     kactivities karchive kconfig kconfigwidgets \
                     kcoreaddons kdbusaddons kdeclarative kdoctools \
                     kglobalaccel kguiaddons ki18n kiconthemes kio kservice \
                     kwindowsystem kxmlgui knotifications kpackage \
-
+                    kparts kwidgetsaddons
+    platform linux {
+        kf5.depends_frameworks \
+                    kwayland
+    }
     # submit this one upstream
     patchfiles-append \
                     plasma-framework/patch-plasmafw-autotests.diff
-#     # https://bugs.kde.org/show_bug.cgi?id=359026
-#     patchfiles-append \
-#                     plasma-framework/patch-plasmafw-corona-null.diff
     post-patch {
         reinplace "s|/usr/share/inkscape|${prefix}/share/inkscape|g" "${worksrcpath}/src/tools/inkscape extensions/plasmarename.py"
         reinplace "s|/usr/bin/perl|${prefix}/bin/perl5|g" ${worksrcpath}/src/tools/currentColorFillFix.sh
     }
-    kf5.depends_qt5_components \
-                    qtsvg qtdeclarative
 }
 
 subport kf5-kservice {
@@ -1568,6 +1558,11 @@ subport kf5-kservice {
     set kf5.framework \
                     kservice
     kf5::set_checkums
+    ifplatform darwin {
+        depends_build-append \
+                    port:bison \
+                    port:flex
+    }
     kf5.depends_frameworks \
                     kconfig kcoreaddons kcrash kdbusaddons kdoctools ki18n
     patchfiles-append \
@@ -1605,7 +1600,6 @@ subport kf5-kservice {
 }
 
 subport kf5-ktexteditor {
-    revbump_for_version 2 5.27.0 darwin
     description     Full text editor component
     long_description \
                     KTextEditor provides a powerful text editor component that you can embed in your \
@@ -1622,6 +1616,8 @@ subport kf5-ktexteditor {
                     path:bin/perl5:perl5
     depends_lib-append \
                     port:libgit2
+    kf5.depends_qt5_components \
+                    qtscript qtxmlpatterns
     kf5.depends_frameworks \
                     karchive kconfig kguiaddons \
                     ki18n kiconthemes kio kparts \
@@ -1650,18 +1646,18 @@ subport kf5-ktexteditor {
         # fix too low lineheights on Mac
         patchfiles-append \
                     ktexteditor/patch-ktexteditor-fix-lineheight.diff
-        # quench a qwarning about an unsupported clipboard mode
-        # http://commits.kde.org/ktexteditor/35043d5ebace305cbdabfec9155dcfbd992087c9
-        patchfiles-append \
-                    ktexteditor/patch-ktexteditor-quench-qcliboard-qwarning.diff
+#        # quench a qwarning about an unsupported clipboard mode
+#        # http://commits.kde.org/ktexteditor/35043d5ebace305cbdabfec9155dcfbd992087c9
+#        versioned_patchfile_append \
+#                    ktexteditor patch-ktexteditor-quench-qcliboard-qwarning.diff
     }
     # fix a confusing alert message
     patchfiles-append \
                     ktexteditor/patch-ktexteditor-mod-message.diff
-    kf5.depends_qt5_components \
-                    qtscript qtxmlpatterns
-    post-destroot {
-        xinstall -m 644 ${filespath}/ktexteditor/macports.xml ${destroot}${prefix}/share/katepart5/syntax/
+    if {[vercmp ${version} 5.27.0] <= 0} {
+        post-destroot {
+            xinstall -m 644 ${filespath}/ktexteditor/macports.xml ${destroot}${prefix}/share/katepart5/syntax/
+        }
     }
 }
 
@@ -1677,10 +1673,11 @@ subport kf5-ktextwidgets {
                     kcompletion kconfig kconfigwidgets ki18n \
                     kiconthemes kservice sonnet kwidgetsaddons \
                     kwindowsystem
-    # window icon pushed in 9789cf3ca091a6affd2253c7609db1da41d4a6ba
-    # https://git.reviewboard.kde.org/r/129513/
+#    # window icon pushed in 9789cf3ca091a6affd2253c7609db1da41d4a6ba
+#    # https://git.reviewboard.kde.org/r/129513/
+#    versioned_patchfile_append \
+#                    ktextwidgets patch-ktextwidgets-preserve-window-icon.diff
     patchfiles-append \
-                    ktextwidgets/patch-ktextwidgets-preserve-window-icon.diff \
                     ktextwidgets/patch-ktextwidg-use-qsettings-iniformat.diff
 }
 
@@ -1701,8 +1698,10 @@ subport kf5-kwallet {
     set kf5.framework \
                     kwallet
     kf5::set_checkums
+    depends_lib-append \
+                    port:qgpgme
     kf5.depends_frameworks \
-                    gpgmepp kconfig kcoreaddons kdbusaddons ki18n \
+                    kconfig kconfigwidgets kcoreaddons kdbusaddons ki18n \
                     kiconthemes knotifications kservice kwidgetsaddons \
                     kwindowsystem
     platform darwin {
@@ -1724,13 +1723,8 @@ subport kf5-kwallet {
     }
     patchfiles-append \
                     kwallet/patch-kwallet-nongui-runtimes.diff \
-                    kwallet/patch-kwallet-kwalletd-is-agent.diff \
-                    kwallet/patch-kwallet-cmake-keychain-or-kwalletd.diff
-    if {[vercmp ${version} 5.27.0] < 0} {
-        # fix building with gpgme 1.7x; backported patch from upstream
-        patchfiles-append \
-                    kwallet/patch-fix-gpgme17x.diff
-    }
+                    kwallet${PVERSION}/patch-kwallet-kwalletd-is-agent.diff \
+                    kwallet${PVERSION}/patch-kwallet-cmake-keychain-or-kwalletd.diff
     if {![variant_exists osxkeychain] || ![variant_isset osxkeychain]} {
         patchfiles-append \
                     kwallet/patch-kwallet-kwalletd-makeforeground.diff
@@ -1773,10 +1767,10 @@ subport kf5-kxmlgui {
                     kxmlgui
     kf5::set_checkums
     kf5.depends_frameworks \
-                    attica kconfig kconfigwidgets kglobalaccel \
+                    kconfig kconfigwidgets kcoreaddons kglobalaccel \
                     ki18n kiconthemes kitemviews ktextwidgets \
                     kwidgetsaddons kwindowsystem
-    # this patch should be reported upstream
+    # https://commits.kde.org/kxmlgui/a1a41bd9bdbec3e0eb45e6e2edff5292ec477db6
     patchfiles-append \
                     patch-kxmlgui-kmainwindow-event.diff
 }
@@ -1804,12 +1798,12 @@ subport kf5-krunner {
     set kf5.framework \
                     krunner
     kf5::set_checkums
+    kf5.depends_qt5_components \
+                    qtdeclarative
     kf5.depends_frameworks \
                     kconfig kcoreaddons ki18n kio \
                     plasma-framework kservice solid \
                     threadweaver
-    kf5.depends_qt5_components \
-                    qtdeclarative
 }
 
 ### === Tier 4 ===
@@ -1837,10 +1831,15 @@ subport kf5-frameworkintegration {
                     frameworkintegration
     kf5::set_checkums
     kf5.depends_frameworks \
-                    kconfig kconfigwidgets ki18n kiconthemes \
-                    kio knotifications kwidgetsaddons
+                    kconfig kconfigwidgets kiconthemes \
+                    knotifications kpackage kwidgetsaddons
     test.env-append \
                     KDE_SESSION_VERSION=5
+    post-patch {
+        # these seem to change the required version a bit too often, so use a reinplace instead of a patchfile
+        reinplace -W ${worksrcpath} "s|^find_package(packagekitqt5|# find_package(packagekitqt5|g" CMakeLists.txt
+        reinplace -W ${worksrcpath} "s|^find_package(AppStreamQt|# find_package(AppStreamQt|g" CMakeLists.txt
+    }
 }
 
 subport kf5-frameworkintegration-devel {
@@ -1865,15 +1864,20 @@ subport kf5-frameworkintegration-devel {
     set kf5.framework \
                     frameworkintegration
     fetch.type      git
-    git.branch      9ce2c5d9d766c228dd75df0201b2ecb2d0ab820c
-    version         ${version}.1
-    epoch           1
+#     v5.29.0-7-g1d95d47
+    git.branch      1d95d478cf26b5aed3a702f839a72447e83b1c01
+    version         ${version}.7
     kf5.depends_frameworks \
-                    kconfig kconfigwidgets ki18n kiconthemes \
-                    kio knotifications kwidgetsaddons
+                    kconfig kconfigwidgets kiconthemes knewstuff \
+                    knotifications kpackage kwidgetsaddons
     # autotests need more patching than just being built as nongui (non-app-bundle) executables!
     test.env-append \
                     KDE_SESSION_VERSION=5
+    post-patch {
+        # these seem to change the required version a bit too often, so use a reinplace instead of a patchfile
+        reinplace -W ${worksrcpath} "s|^find_package(packagekitqt5|# find_package(packagekitqt5|g" CMakeLists.txt
+        reinplace -W ${worksrcpath} "s|^find_package(AppStreamQt|# find_package(AppStreamQt|g" CMakeLists.txt
+    }
 }
 
 homepage            http://projects.kde.org/projects/${kf5.virtualPath}/${kf5.framework} \
@@ -1913,11 +1917,13 @@ subport kf5-kdelibs4support {
                     port:p${perl5.default_branch}-uri \
                     lib:libssl:openssl \
                     port:docbook-xml
+    kf5.depends_qt5_components \
+                    qtsvg
     kf5.depends_frameworks \
-                    kbookmarks kcompletion kconfig kconfigwidgets \
-                    kcrash kdbusaddons kded ki18n kdesignerplugin \
+                    kcompletion kconfig kconfigwidgets \
+                    kcrash kdbusaddons kded kdesignerplugin \
                     kdoctools kglobalaccel kguiaddons ki18n \
-                    kiconthemes kio kitemviews knotifications kparts \
+                    kiconthemes kio knotifications kparts \
                     kservice ktextwidgets kunitconversion \
                     kwidgetsaddons kwindowsystem kxmlgui
     platform darwin {
@@ -1960,8 +1966,6 @@ subport kf5-kdelibs4support {
                 ${destroot}${prefix}/share/doc/HTML/en/kcontrol/kcm_ssl5
         }
     }
-    kf5.depends_qt5_components \
-        qtsvg qtdeclarative qttools
 }
 
 subport kf5-kdelibs4support-devel {
@@ -1977,9 +1981,9 @@ subport kf5-kdelibs4support-devel {
     # change the type of framework to "portingAid"
     kf5.is_portingAid
     fetch.type      git
-    git.branch      a64ad14a0828a3a9a3fa1fae01b05f3ad82f9699
-#     v5.2.0-222-ga64ad14
-    version         ${version}.5.2.0.222
+    git.branch      9136b0ca75d7d14518ed8817ba18055267b1bbdb
+#     v5.2.0-242-g9136b0c
+    version         ${version}.5.2.0.242
     # call the function that will take care of resetting the rest
     kf5.set_project \
                     kdelibs4support
@@ -1990,11 +1994,13 @@ subport kf5-kdelibs4support-devel {
                     port:p${perl5.default_branch}-uri \
                     lib:libssl:openssl \
                     port:docbook-xml
+    kf5.depends_qt5_components \
+                    qtsvg
     kf5.depends_frameworks \
-                    kbookmarks kcompletion kconfig kconfigwidgets \
-                    kcrash kdbusaddons kded ki18n kdesignerplugin \
+                    kcompletion kconfig kconfigwidgets \
+                    kcrash kdbusaddons kded kdesignerplugin \
                     kdoctools kglobalaccel kguiaddons ki18n \
-                    kiconthemes kio kitemviews knotifications kparts \
+                    kiconthemes kio knotifications kparts \
                     kservice ktextwidgets kunitconversion \
                     kwidgetsaddons kwindowsystem kxmlgui
     platform darwin {
@@ -2034,8 +2040,6 @@ subport kf5-kdelibs4support-devel {
                 ${destroot}${prefix}/share/doc/HTML/en/kcontrol/kcm_ssl5
         }
     }
-    kf5.depends_qt5_components \
-        qtsvg qtdeclarative qttools
 }
 
 subport kf5-khtml {
@@ -2058,7 +2062,8 @@ subport kf5-khtml {
     }
     depends_lib-append \
                     port:phonon-qt5 \
-                    lib:libssl:openssl
+                    lib:libssl:openssl \
+                    port:zlib
     kf5.depends_frameworks \
                     karchive kcodecs kglobalaccel ki18n \
                     kiconthemes kio kjs knotifications \
@@ -2116,10 +2121,10 @@ subport kf5-kross {
     depends_build-append \
                     ${kf5::pythondep}
     kf5.depends_qt5_components \
-                    qtscript qttools
+                    qtscript
     kf5.depends_frameworks \
-                    kcompletion kcoreaddons ki18n kiconthemes \
-                    kio kparts kwidgetsaddons kxmlgui
+                    kcompletion kcoreaddons kdoctools ki18n \
+                    kiconthemes kio kparts kwidgetsaddons kxmlgui
     patchfiles-append \
                     kross/patch-kross-nongui-execs.diff
 }
@@ -2192,8 +2197,8 @@ subport kf5-tier1-frameworks {
         kf5.depends_build_frameworks \
                     kwayland
     }
-    # kf5-kapidox  kf5-attica kf5-karchive kf5-kcodecs kf5-kconfig kf5-kcoreaddons kf5-kdbusaddons kf5-kdnssd kf5-kguiaddons kf5-ki18n kf5-kidletime kf5-kimageformats kf5-kitemmodels kf5-kitemviews kf5-kplotting kf5-kwidgetsaddons kf5-kwindowsystem kf5-solid kf5-sonnet kf5-threadweaver
-    # kf5-kapidox  kf5-attica kf5-karchive kf5-kcodecs kf5-kconfig kf5-kcoreaddons kf5-kdbusaddons kf5-kdnssd kf5-kguiaddons kf5-ki18n kf5-kidletime kf5-kimageformats kf5-kitemmodels kf5-kitemviews kf5-kplotting kf5-kwidgetsaddons kf5-kwindowsystem-devel kf5-solid kf5-sonnet kf5-threadweaver
+    # kf5-kapidox  kf5-attica kf5-karchive kf5-kcodecs kf5-kconfig kf5-kcoreaddons kf5-kdbusaddons kf5-kdnssd kf5-kguiaddons kf5-ki18n kf5-kidletime kf5-kimageformats kf5-kitemmodels kf5-kitemviews kf5-kplotting kf5-ksyntaxhighlighting kf5-kwidgetsaddons kf5-kwindowsystem kf5-solid kf5-sonnet kf5-threadweaver
+    # kf5-kapidox  kf5-attica kf5-karchive kf5-kcodecs kf5-kconfig kf5-kcoreaddons kf5-kdbusaddons kf5-kdnssd kf5-kguiaddons kf5-ki18n kf5-kidletime kf5-kimageformats kf5-kitemmodels kf5-kitemviews kf5-kplotting kf5-ksyntaxhighlighting kf5-kwidgetsaddons kf5-kwindowsystem-devel kf5-solid kf5-sonnet kf5-threadweaver
     # on linux, add kf5-kwayland
     installs_libs   no
     supported_archs noarch
@@ -2251,7 +2256,7 @@ subport kf5-tier3-frameworks {
                     krunner
     # kf5-baloo kf5-kactivities kf5-kbookmarks kf5-kcmutils kf5-kconfigwidgets kf5-kdeclarative kf5-kded kf5-kdesignerplugin kf5-kdesu kf5-kdewebkit kf5-kemoticons kf5-kglobalaccel kf5-kiconthemes kf5-kinit kf5-kio kf5-knewstuff kf5-knotifyconfig kf5-kparts kf5-kpeople kf5-plasma-framework kf5-kservice kf5-ktexteditor kf5-ktextwidgets kf5-kwallet kf5-kxmlgui kf5-kxmlrpcclient kf5-krunner
     # in build order:
-    # kf5-kconfigwidgets kf5-kiconthemes kf5-kservice kf5-kglobalaccel kf5-ktextwidgets kf5-kxmlgui kf5-kbookmarks kf5-kwallet kf5-kio kf5-baloo kf5-kdeclarative kf5-kcmutils kf5-kactivities kf5-kinit kf5-kded kf5-kparts kf5-kdewebkit kf5-kdesignerplugin kf5-kdesu kf5-kemoticons kf5-knewstuff kf5-knotifyconfig kf5-kpeople kf5-plasma-framework kf5-ktexteditor kf5-kxmlrpcclient kf5-krunner
+    # kf5-kconfigwidgets kf5-kiconthemes kf5-kservice kf5-kglobalaccel kf5-ktextwidgets kf5-kxmlgui kf5-kbookmarks kf5-kwallet kf5-kio kf5-baloo kf5-kactivities kf5-kdeclarative kf5-kcmutils kf5-kinit kf5-kded kf5-kparts kf5-kdewebkit kf5-kdesignerplugin kf5-kdesu kf5-kemoticons kf5-knewstuff kf5-knotifyconfig kf5-kpeople kf5-plasma-framework kf5-ktexteditor kf5-kxmlrpcclient kf5-krunner
     installs_libs   no
     supported_archs noarch
     distfiles

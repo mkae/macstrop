@@ -40,9 +40,11 @@ namespace eval cmake {
 }
 
 options                             cmake.build_dir \
+                                    cmake.source_dir \
                                     cmake.generator \
                                     cmake.install_prefix \
                                     cmake.install_rpath \
+                                    cmake.module_path \
                                     cmake_share_module_dir \
                                     cmake.out_of_source \
                                     cmake.set_osx_architectures
@@ -55,7 +57,10 @@ default cmake.out_of_source         {yes}
 # that don't support the corresponding -arch options.
 default cmake.set_osx_architectures {yes}
 
+# cmake.build_dir defines where the build will take place
 default cmake.build_dir             {${workpath}/build}
+# cmake.source_dir defines where CMake will look for the toplevel CMakeLists.txt file
+default cmake.source_dir            {${worksrcpath}}
 
 # cmake-based ports may want to modify the install prefix
 default cmake.install_prefix        {${prefix}}
@@ -64,7 +69,7 @@ default cmake.install_rpath         {${prefix}/lib}
 proc cmake::rpath_flags {} {
     global prefix
     if {[llength [option cmake.install_rpath]]} {
-        # make sure a ${cmake.install_prefix} is included in the rpath
+        # make sure a single ${cmake.install_prefix} is included in the rpath
         # careful, we are likely to be called more than once.
         if {[lsearch -exact [option cmake.install_rpath] [option cmake.install_prefix]/lib] == -1} {
             cmake.install_rpath-append [option cmake.install_prefix]/lib
@@ -92,6 +97,18 @@ proc cmake::system_prefix_path {} {
     }
 }
 
+# standard place to install extra CMake modules
+default cmake_share_module_dir      {${prefix}/share/cmake/Modules}
+# extra locations to search for modules can be specified with
+# cmake.module_path; they come after ${cmake_share_module_dir}
+default cmake.module_path           {}
+proc cmake::module_path {} {
+    if {[llength [option cmake.module_path]]} {
+        return -DCMAKE_MODULE_PATH="[join [concat [option cmake_share_module_dir] [option cmake.module_path]] \;]"
+    }
+    return -DCMAKE_MODULE_PATH=[option cmake_share_module_dir]
+}
+
 # CMake provides several different generators corresponding to different utilities
 # (and IDEs) used for building the sources. We support "Unix Makefiles" (the default)
 # and Ninja, a leaner-and-meaner alternative.
@@ -112,17 +129,14 @@ default cmake.generator             {"Unix Makefiles"}
 # redundant in normal destroot steps, because we just completed the build step.
 default destroot.target             {install/fast}
 
-# standard place to install extra CMake modules
-default cmake_share_module_dir      {${prefix}/share/cmake/Modules}
-
 # can use cmake or cmake-devel; default to cmake if not installed
 depends_build-append                path:bin/cmake:cmake
 
-proc _cmake_get_build_dir {} {
+proc cmake::build_dir {} {
     if {[option cmake.out_of_source]} {
         return [option cmake.build_dir]
     }
-    return [option worksrcpath]
+    return [option cmake.source_dir]
 }
 
 option_proc cmake.generator cmake::handle_generator
@@ -171,7 +185,7 @@ proc cmake::handle_generator {option action args} {
     }
 }
 
-default configure.dir {[_cmake_get_build_dir]}
+default configure.dir {[cmake::build_dir]}
 default build.dir {${configure.dir}}
 default build.post_args {VERBOSE=ON}
 
@@ -193,14 +207,14 @@ default configure.pre_args {[list \
                     -DCMAKE_COLOR_MAKEFILE=ON \
                     -DCMAKE_FIND_FRAMEWORK=LAST \
                     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-                    -DCMAKE_MODULE_PATH=${cmake_share_module_dir} \
+                    {*}[cmake::module_path] \
                     {*}[cmake::rpath_flags] \
                     -Wno-dev
 ]}
 
 configure.args      -DCMAKE_BUILD_TYPE=MacPorts
 
-default configure.post_args {${worksrcpath}}
+default configure.post_args {[option cmake.source_dir]}
 
 # CMake honors set environment variables CFLAGS, CXXFLAGS, and LDFLAGS when it
 # is first run in a build directory to initialize CMAKE_C_FLAGS,

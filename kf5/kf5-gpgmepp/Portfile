@@ -6,14 +6,13 @@ PortSystem          1.0
 
 set kf5.project     gpgmepp
 set kf5.virtualPath applications
-# # be ahead of the pack (we need to set both release variables for that):
-# set kf5.release     16.08.1
-# set kf5.latest_release \
-#                     16.08.1
 PortGroup           kf5 1.1
 # kf5.use_latest      applications
 
 maintainers         gmail.com:rjvbertin mk openmaintainer
+
+replaced_by         qgpgme
+PortGroup           obsolete 1.0
 
 description         C++ bindings/wrapper for gpgme
 long_description    GpgME++ is a C++ wrapper (or C++ bindings) for the GnuPG project's \

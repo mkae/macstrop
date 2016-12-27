@@ -10,12 +10,8 @@ set kf5.category    development
 PortGroup           kf5 1.1
 PortGroup           active_variants 1.1
 
-set using_latest    yes
-if {${using_latest}} {
-    # kf5.use_latest  applications
-} else {
-#     revision 1
-}
+# # keep us at 16.08.2 for now
+# set kf5.latest_release 16.08.2 ; kf5.use_latest applications
 
 maintainers         gmail.com:rjvbertin mk openmaintainer
 
@@ -24,16 +20,20 @@ installs_libs       yes
 description         Virtual Globe, KF5 version.
 long_description    KDE virtual globe and world atlas. This is the new version,\
                     based on KF5.
-if {${using_latest}} {
+if {[vercmp ${version} 16.08.2] == 0} {
     checksums       rmd160  56928481cc12e6e61daa0604753951a1e6018648 \
                     sha256  e7b070225c4ebaf163e0db64147f8e3b2e86f37aed46c502469992289dc215f9
-    patchfiles-append \
+    if {![variant_isset stock]} {
+        patchfiles-append \
                     patch-build-for-macports-16082.diff
+    }
 } else {
-    checksums       rmd160  0d61bce13623b2ef02bbdaa5ea5fb47793bd7b9c \
-                    sha256  ce309c827f60f389a012fb8ea8ccccf5d5925e0c5de8ae41f2ac981c1fe1c5a8
-    patchfiles-append \
-                    patch-build-for-macports2.diff
+    checksums       rmd160  166156360edcbb4445db66e0318be8347f0ad9fa \
+                    sha256  1d4167254399556ee1ed89920047f27ecab92e280a171eb51be60ba330e7171a
+    if {![variant_isset stock]} {
+        patchfiles-append \
+                    patch-build-for-macports-16120.diff
+    }
 }
 
 if {![catch {set result [active_variants marble kf5compat ""]}]} {
@@ -48,25 +48,41 @@ kf5.depends_qt5_components \
 
 kf5.depends_frameworks \
                     kconfig kcoreaddons kcrash ki18n kio \
-                    knewstuff kparts krunner kservice kwallet
+                    knewstuff kparts krunner kservice kwallet \
+                    plasma-framework
 
 depends_lib-append  port:shapelib \
                     port:phonon-qt5 \
                     port:zlib
+
+variant stock description {do a stock build; purely experimental and for testing purposes} {}
 
 variant gps description {include support for communicating with a GPS} {
     depends_lib-append \
                     port:gpsd
 }
 
+platform linux {
+    variant nativeQSP description {variant provided for testing purposes} {}
+}
+
 patch.pre_args      -Np1
 
-if {[variant_isset nativeQSP]} {
-    configure.args-append \
+pre-configure {
+    if {([string first "-Ofast" ${configure.optflags}] >= 0) || ([string first "-Ofast" ${configure.cxxflags}] >= 0)} {
+        ui_error "Marble won't run when built with -Ofast"
+        return -code error "Incompatible optimisation level"
+    }
+}
+
+if {![variant_isset stock]} {
+    if {[variant_isset nativeQSP]} {
+        configure.args-append \
                     -DAPPLE_STANDALONE_BUNDLE:BOOL=ON
-} else {
-    configure.args-append \
+    } else {
+        configure.args-append \
                     -DAPPLE_STANDALONE_BUNDLE:BOOL=OFF
+    }
 }
 
 configure.args-append \
@@ -84,10 +100,8 @@ platform darwin {
         if {![variant_isset nativeQSP]} {
             file rename ${destroot}${prefix}/bin/marble-qt ${destroot}${prefix}/bin/marble-qt5
             kf5.add_app_wrapper marble5 marble
-            if {${using_latest}} {
-                # there appears to be no ABI change, for now:
-                ln -s libmarblewidget-qt5.25.dylib ${destroot}${prefix}/lib/libmarblewidget-qt5.24.dylib
-            }
+            # there appears to be no ABI change, for now:
+            ln -s libmarblewidget-qt5.26.dylib ${destroot}${prefix}/lib/libmarblewidget-qt5.25.dylib
         } else {
             xinstall -m 755 -d ${destroot}${qt_apps_dir}
             file rename ${destroot}${prefix}/Marble.app ${destroot}${qt_apps_dir}/Marble.app
@@ -97,5 +111,7 @@ platform darwin {
 platform linux {
     post-destroot {
         ln -s marble ${destroot}${prefix}/bin/marble5
+        # there appears to be no ABI change, for now:
+        ln -s libmarblewidget-qt5.so.26 ${destroot}${prefix}/lib/libmarblewidget-qt5.so.25
     }
 }

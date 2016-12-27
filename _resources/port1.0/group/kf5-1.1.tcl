@@ -48,10 +48,19 @@ if {${kf5::includecounter} == 0} {
     set qt5.prefer_kde  1
     PortGroup           qt5 1.0
     PortGroup           active_variants 1.1
-}
 
-if {![info exists qt5.using_kde] || !${qt5.using_kde}} {
-    ui_warn "It is strongly advised to install KF5 ports against port:qt5-kde or port:qt5-kde-devel."
+    if {![info exists qt5.using_kde] || !${qt5.using_kde}} {
+        pre-fetch {
+            ui_warn "It is strongly advised to install KF5 ports against port:qt5-kde or port:qt5-kde-devel; any other configuration is not supported."
+        }
+        pre-configure {
+            ui_warn "It is strongly advised to install KF5 ports against port:qt5-kde or port:qt5-kde-devel; any other configuration is not supported."
+        }
+                notes-append "It is strongly advised to install KF5 ports against port:qt5-kde or port:qt5-kde-devel; any other configuration is not supported."
+        # pull in a build dependency that port:qt5-kde includes by default in the main port:
+        depends_build-append \
+                        qt5-qttools
+    }
 }
 
 ########################################################################
@@ -96,25 +105,26 @@ if { ![ info exists kf5.project ] } {
 
 # KF5 frameworks current version, which is the same for all frameworks
 if {![info exists kf5.version]} {
-    set kf5.version     5.27.0
+    set kf5.version     5.29.0
     # kf5.latest_version is supposed to be used only in the KF5-Frameworks Portfile
-    # when updating it to the new version (=kf5.latest_version).
+    # when updating it to the new version (=kf5.latest_version). This feature is
+    # activated only when a file `port dir KF5-Frameworks`/files/enable_latest exists.
     set kf5.latest_version \
-                        5.27.0
+                        5.29.0
 }
 
 # KF5 Applications version
 if {![ info exists kf5.release ]} {
-    set kf5.release     16.08.2
+    set kf5.release     16.12.0
     set kf5.latest_release \
-                        16.08.3
+                        16.12.0
 }
 
 # KF5 Plasma version
 if {![ info exists kf5.plasma ]} {
-    set kf5.plasma      5.8.2
+    set kf5.plasma      5.8.4
     set kf5.latest_plasma \
-                        5.8.2
+                        5.8.4
 }
 
 platforms               darwin linux
@@ -295,9 +305,10 @@ if {${kf5::includecounter} == 0} {
                     foreach doc [glob -nocomplain ${workpath}/apidocs/*.qch] {
                         xinstall -m 644 ${doc} ${destroot}${kf5.docs_dir}
                     }
-                    if {[file exists ${workpath}/apidocs/kapidox.chm]} {
-                        set doc [string map {".qch" ".chm"} [file tail ${doc}]]
-                        xinstall -m 644 ${workpath}/apidocs/kapidox.chm ${destroot}${kf5.docs_dir}/${doc}
+                    if {[variant_exists chm] && [variant_isset chm]} {
+                        foreach doc [glob -nocomplain ${workpath}/apidocs/*.chm] {
+                            xinstall -m 644 ${doc} ${destroot}${kf5.docs_dir}
+                        }
                     }
                 }
             }
@@ -523,7 +534,7 @@ proc kf5.set_project {project} {
                                 http://download.kde.org/stable/${kf5.virtualPath}
                     livecheck.regex \
                                 (\\d+\\.\\d+\\.\\d)
-                    set kf5::cat "Applications"
+                    set kf5::cat "KF5-Applications"
                 }
             }
         }

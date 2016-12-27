@@ -230,6 +230,12 @@ if {${os.platform} eq "darwin"} {
 compiler.blacklist-append   macports-llvm-gcc-4.2 llvm-gcc-4.2
 compiler.blacklist-append   gcc-4.2 apple-gcc-4.2 gcc-4.0
 compiler.blacklist-append   {clang < 500}
+platform darwin {
+    if {${os.major} >= 13} {
+        compiler.blacklist-append *gcc*
+    }
+}
+
 # # starting with the one-but-newest macports-clang in the whitelist, check it it is
 # # installed and blacklist the other values so that the automatic selection mechanism
 # # will select the installed whitelisted version.
@@ -511,7 +517,10 @@ proc revbump_for_version {r v {p 0}} {
     global version revision subport os.platform
     if {${p} eq 0 || ${os.platform} eq ${p}} {
         if {[vercmp ${version} ${v}] > 0} {
-            return -code error "remove revbump (revision ${r}) for ${subport}"
+            ui_error "remove revbump (revision ${r}) for ${subport}"
+            pre-configure {
+                return -code error "remove revbump (revision ${r}) for ${subport}"
+            }
         }
         uplevel set revision ${r}
     }
@@ -564,8 +573,8 @@ proc qt5.add_app_wrapper {wrappername {bundlename ""} {bundleexec ""} {appdir ""
             }
             puts ${fd} "export LD_LIBRARY_PATH=\$\{LD_LIBRARY_PATH\}:${prefix}/lib:${qt_libs_dir}"
             puts ${fd} "exec \"${appdir}/${bundleexec}\" \"\$\@\""
-            close ${fd}
         }
+        close ${fd}
         system "chmod 755 ${destroot}${prefix}/bin/${wrappername}"
     } else {
         ui_error "Failed to (re)create \"${destroot}${prefix}/bin/${wrappername}\" : ${err}"
