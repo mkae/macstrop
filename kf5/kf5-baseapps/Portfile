@@ -14,8 +14,8 @@ PortGroup           kf5 1.1
 
 maintainers         gmail.com:rjvbertin mk openmaintainer
 
-description         Provides kfind and konqueror, a web browser aka universal viewer aka file manager for KF5.
-long_description    This port provides KFind (KDE's file find utility) and Konqueror, one of the most advanced file \
+description         Meta-port providing kfind and konqueror, a web browser aka universal viewer aka file manager for KF5.
+long_description    This meta-port provides KFind (KDE's file find utility) and Konqueror, one of the most advanced file \
                     managers for KDE. Thanks to the underlying KDE technologies it can transparently \
                     access FTP and SFTP servers, zip files (and other archives), smb (Windows) \
                     shares, and even browse and rip audio CDs. \
@@ -29,110 +29,204 @@ long_description    This port provides KFind (KDE's file find utility) and Konqu
 homepage            http://www.konqueror.org/
 
 subport ${name}-devel {
-    description     ${description} This port follows git/frameworks, and is very much alpha quality.
+    description     ${description} This port follows git.
     long_description \
-                    ${long_description} This port follows git/frameworks, and is very much alpha quality.
+                    ${long_description} This port follows git.
 }
 
 if {${subport} eq "${name}-devel"} {
+    replaced_by     ${name}
+    PortGroup       obsolete 1.0
     conflicts       ${name}
     fetch.type      git
-    if {[file exists ${filespath}/${name}-git/.git]} {
-        git.url     ${filespath}/${name}-git
-    } else {
-        git.url     git://anongit.kde.org/kde-baseapps
-    }
-# #     v16.07.80-1657-gbfd09bc
-#     git.branch      bfd09bcec03e8080bfce33f850c54bcff3a4a475
+    git.url         git://anongit.kde.org/kde-baseapps
 #     v16.07.80-1719-gc5bd2d6
     git.branch      c5bd2d667b4baa4f241eef09870e3c1ba3159649
     version         16.07.80.1719
+    worksrcdir      ${name}-5
+    distname        ${name}-5
 } else {
+
     conflicts       ${name}-devel
-    description     ${description} This port doesn't have a release version yet.
-    long_description \
-                    ${long_description} This port doesn't have a release version yet.
-    version         0
-    use_xz          yes
-    pre-fetch {
-        ui_error "This port doesn't have a release version yet."
-        return -code error "This port doesn't have a release version yet."
+
+    if {${subport} eq "${name}"} {
+        version     ${kf5.release}
+        installs_libs   no
+        supported_archs noarch
+        distfiles
+        fetch {}
+        checksum {}
+        extract {}
+        use_configure   no
+        build {}
+        destroot {
+            xinstall -d -m 755 ${destroot}${prefix}/share/doc/kf5-installed-meta-ports
+            system "touch ${destroot}${prefix}/share/doc/kf5-installed-meta-ports/${subport}"
+        }
+        depends_run-append \
+                    port:kf5-kdialog \
+                    port:kf5-kfind \
+                    port:kf5-keditbookmarks
     }
-    checksums       rmd160  0 \
-                    sha256  0
 }
-
-worksrcdir          ${name}-5
-distname            ${name}-5
-
-# conflicts
-
-kf5.depends_qt5_components \
-                    qtdeclarative qtlocation qtscript \
-                    qtwebchannel qtwebengine
-
-kf5.depends_frameworks \
-                    kactivities karchive kbookmarks kcmutils \
-                    kconfig kconfigwidgets kcoreaddons kcrash \
-                    kdbusaddons kded kdelibs4support kdesu \
-                    khtml ki18n kiconthemes kinit kio \
-                    kjobwidgets kwidgetsaddons
-kf5.depends_build_frameworks \
-                    oxygen-icons
-depends_lib-append  port:tidy \
-                    port:zlib
-depends_run-append  port:kf5-kio-extras
 
 kf5.allow_apidocs_generation no
 
 patch.pre_args      -Np1
-patchfiles-append   patch-preserve-window-icon.diff \
-                    patch-plugin-paths.diff \
-                    patch-add-app-icon.diff \
-                    patch-rename-libs.diff \
-                    patch-nongui-executables.diff \
-                    patch-konq-plugins-validators-tidy_validator.cpp.diff
-patchfiles-append   patch-exclude-netwmh.diff \
-                    patch-select-apps.diff
 
-post-patch {
-    reinplace "s|<binary>konqueror</binary>|<binary>konqueror5</binary>|g" ${worksrcpath}/konqueror/org.kde.konqueror.appdata.xml
+subport kf5-kdialog {
+    description     KDE dialogs for scripts
+    long_description \
+                    kdialog allows you to display dialog boxes from shell scripts. \
+                    The syntax is very much inspired by the Linux "dialog" command \
+                    (which shows text mode dialogs).
+    kf5.set_project kdialog
+    homepage        http://techbase.kde.org/Development/Tutorials/Shell_Scripting_with_KDE_Dialogs
+    checksums       rmd160  758da387a708f8e938a90cd00eae70b59e2eaea1 \
+                    sha256  2c44d0c2bd343b3fab5a11ecc504232048725d312ccbf395abcc97794a71cb5c
+    patchfiles-append \
+                    kdialog/patch-preserve-window-icon.diff \
+                    kdialog/patch-nongui-executables.diff
+    kf5.depends_frameworks \
+                    kdelibs4support kio
+    platform darwin {
+        kf5.kde4compat -port kde4-baseapps {
+            post-destroot {
+                file delete ${destroot}${prefix}/share/dbus-1/interfaces/org.kde.kdialog.ProgressDialog.xml
+            }
+        }
+    }
 }
 
-platform darwin {
-    kf5.kde4compat -port kde4-baseapps {
-        post-destroot {
-            file rename ${destroot}${prefix}/bin/kfmclient ${destroot}${prefix}/bin/kfmclient5
-            file rename ${destroot}${prefix}/share/doc/HTML/en/kfind ${destroot}${prefix}/share/doc/HTML/en/kfind5
-            file delete ${destroot}${prefix}/share/appdata/kfind.appdata.xml
-            file delete ${destroot}${prefix}/share/appdata/konqueror.appdata.xml
-            file delete ${destroot}${prefix}/share/config.kcfg/keditbookmarks.kcfg
-            file delete ${destroot}${prefix}/share/config.kcfg/konqueror.kcfg
-            file delete ${destroot}${prefix}/share/config.kcfg/validators.kcfg
-            file delete ${destroot}${prefix}/share/dbus-1/interfaces/org.kde.Konqueror.Main.xml
-            file delete ${destroot}${prefix}/share/dbus-1/interfaces/org.kde.Konqueror.MainWindow.xml
-            file delete ${destroot}${prefix}/share/dbus-1/interfaces/org.kde.kdialog.ProgressDialog.xml
-            file delete ${destroot}${prefix}/share/dbus-1/interfaces/org.kde.konqueror.Preloader.xml
-            file delete -force ${destroot}${prefix}/share/icons/oxygen
-            # there's 1 icon we provide that no one else installs, so we have to be selective:
-            foreach i {konqueror kfind fsview} {
-                foreach j [glob -nocomplain ${destroot}${prefix}/share/icons/hicolor/*/apps/${i}.png] {
-                    file delete -force ${j}
-                }
+subport kf5-kfind {
+    description     KDE file find utility
+    long_description \
+                    The Find Files tool is a useful method of searching for specific files \
+                    on your computer, or for searching for files that match a pattern, \
+                    or that contain a certain piece of text in their contents.
+    kf5.set_project kfind
+    checksums       rmd160  7203b695fefba8eb184f3ee07e6fbcb6d3985a24 \
+                    sha256  71229f187f40b9fd3e5f787d654d571cceb2f3bf196e76f8e865403538935a44
+    kf5.depends_frameworks \
+                    karchive kdelibs4support kdoctools kio
+    platform darwin {
+        kf5.kde4compat -port kde4-baseapps {
+            post-destroot {
+                file rename ${destroot}${prefix}/share/doc/HTML/en/kfind ${destroot}${prefix}/share/doc/HTML/en/kfind5
+                file delete ${destroot}${prefix}/share/appdata/kfind.appdata.xml
+                file delete -force ${destroot}${prefix}/share/icons
+                file rename ${destroot}${prefix}/share/man/man1/kfind.1 ${destroot}${prefix}/share/man/man1/kfind5.1
             }
-            file delete -force ${destroot}${prefix}/share/man
         }
     }
     post-destroot {
-        kf5.add_app_wrapper konqueror5 konqueror
         kf5.add_app_wrapper kfind5 kfind
     }
 }
-platform linux {
-    post-destroot {
-        kf5.add_app_wrapper konqueror5 konqueror
+
+subport kf5-keditbookmarks {
+    description     KDE Bookmark Organiser and Editor
+    long_description \
+                    ${description}
+    kf5.set_project keditbookmarks
+    checksums       rmd160  2560ea97dfe81d34bdc0a1665266ce0d756b2c5b \
+                    sha256  3b784a6d03e9f2b98c3c6f5699b4375b14578fd63b14deb720bdd9dc96d582df
+    kf5.depends_frameworks \
+                    kbookmarks kcoreaddons kdoctools ki18n \
+                    kiconthemes kio kparts kwindowsystem
+    patchfiles-append \
+                    keditbookmarks/patch-preserve-window-icon.diff \
+                    keditbookmarks/patch-rename-libs.diff \
+                    keditbookmarks/patch-nongui-executables.diff
+    platform darwin {
+        kf5.kde4compat -port kde4-baseapps {
+            post-destroot {
+                file delete ${destroot}${prefix}/share/config.kcfg/keditbookmarks.kcfg
+                file rename ${destroot}${prefix}/share/man/man1/kbookmarkmerger.1 ${destroot}${prefix}/share/man/man1/kbookmarkmerger5.1
+            }
+        }
     }
 }
-post-destroot {
-    reinplace "s|Exec=konqueror |Exec=konqueror5 |g" ${destroot}${prefix}/share/kservices5/org.kde.konqueror.desktop
+
+subport kf5-konqueror {
+    description     KDE web browser cum file manager
+    long_description \
+                    Konqueror is a web browser and one of the most advanced file \
+                    managers for KDE. Thanks to the underlying KDE technologies it can transparently \
+                    access FTP and SFTP servers, zip files (and other archives), smb (Windows) \
+                    shares, and even browse and rip audio CDs. \
+                    Konqueror is powered by the KHTML rendering engine (and \
+                    optionally QtWebEngine) which means it supports the latest web standards such as \
+                    HTML5, Javascript, CSS3, and others. \
+                    Konqueror makes use of the latest KDE technologies to \
+                    provide you with a PDF viewer, an FTP client, a text editor, a spreadsheet \
+                    editor, a word document editor, an SVN client and more without ever needing to \
+                    open a separate application.
+    homepage        http://konqueror.org/
+    kf5.set_project konqueror
+    checksums       rmd160  685458d81b471b278e8654ed0af034560acd3b1e \
+                    sha256  a209623ef4e62cb04a677d778f6645402c4ff940762435016226fa0c5103aca3
+
+    kf5.depends_qt5_components \
+                    qtdeclarative qtlocation qtscript \
+                    qtwebchannel qtwebengine
+    kf5.depends_frameworks \
+                    kactivities karchive kbookmarks kcmutils \
+                    kcrash kdoctools kded kdelibs4support kdesu \
+                    khtml ki18n kiconthemes kinit kio \
+                    kparts kwidgetsaddons
+    kf5.depends_build_frameworks \
+                    oxygen-icons
+    depends_lib-append \
+                    port:tidy \
+                    port:zlib
+    depends_run-append \
+                    port:kf5-kio-extras
+
+    patchfiles-append \
+                    konqueror/patch-plugin-paths.diff \
+                    konqueror/patch-add-app-icon.diff \
+                    konqueror/patch-rename-libs.diff \
+                    konqueror/patch-nongui-executables.diff \
+                    konqueror/patch-konq-plugins-validators-tidy_validator.cpp.diff \
+                    konqueror/patch-exclude-netwmh.diff \
+                    konqueror/patch-sharedOGLcontexts.diff
+
+    post-patch {
+        reinplace "s|<binary>konqueror</binary>|<binary>konqueror5</binary>|g" ${worksrcpath}/org.kde.konqueror.appdata.xml
+    }
+
+    platform darwin {
+        kf5.kde4compat -port kde4-baseapps {
+            post-destroot {
+                file rename ${destroot}${prefix}/bin/kfmclient ${destroot}${prefix}/bin/kfmclient5
+                file rename ${destroot}${prefix}/share/doc/HTML/en/konqueror ${destroot}${prefix}/share/doc/HTML/en/konqueror5
+                file delete ${destroot}${prefix}/share/appdata/konqueror.appdata.xml
+                file delete ${destroot}${prefix}/share/config.kcfg/konqueror.kcfg
+                file delete ${destroot}${prefix}/share/config.kcfg/validators.kcfg
+                file delete ${destroot}${prefix}/share/dbus-1/interfaces/org.kde.Konqueror.Main.xml
+                file delete ${destroot}${prefix}/share/dbus-1/interfaces/org.kde.Konqueror.MainWindow.xml
+                file delete ${destroot}${prefix}/share/dbus-1/interfaces/org.kde.konqueror.Preloader.xml
+                file delete -force ${destroot}${prefix}/share/icons/oxygen
+                # there's 1 icon we provide that no one else installs, so we have to be selective:
+                foreach i {konqueror fsview} {
+                    foreach j [glob -nocomplain ${destroot}${prefix}/share/icons/hicolor/*/apps/${i}.png] {
+                        file delete -force ${j}
+                    }
+                }
+                file delete -force ${destroot}${prefix}/share/man
+            }
+        }
+        post-destroot {
+            kf5.add_app_wrapper konqueror5 konqueror
+        }
+    }
+    platform linux {
+        post-destroot {
+            kf5.add_app_wrapper konqueror5 konqueror
+        }
+    }
+    post-destroot {
+        reinplace "s|Exec=konqueror |Exec=konqueror5 |g" ${destroot}${prefix}/share/kservices5/org.kde.konqueror.desktop
+    }
 }

@@ -7,41 +7,59 @@ PortSystem          1.0
 set kf5.project     calligra
 set kf5.virtualPath applications
 set kf5.category    office
-set kf5.dont_use_xz 1
 PortGroup           kf5 1.1
+PortGroup           active_variants 1.1
 
 maintainers         gmail.com:rjvbertin mk openmaintainer
 name                kf5-calligra-suite
-version             3.0.0
-distname            ${kf5.project}-${version}
-
-description         KDE Calligra Suite
-conflicts           calligra
-
-master_sites        http://download.kde.org/stable/${distname}
-checksums           rmd160  74df94e896c58071d2a40822b7308ef537984233 \
-                    sha256  79490a61e876767cb10c9605f48104c3d8b91f76a607424d14ec4c73c0eff0b2
 
 kf5.allow_apidocs_generation no
 patch.pre_args      -Np1
 
-if {${subport} eq ${name}} {
+set selected_components 0
+options productset
+default productset  {"LIB_KOVECTORIMAGE \
+                    LIB_CALLIGRA \
+                    LIB_KOMAIN \
+                    LIB_KOODFREADER \
+                    LIB_MSO \
+                    LIB_KOMSOOXML \
+                    FEATURE_SCRIPTING \
+                    PLUGIN_TEXTSHAPE \
+                    APP_CONVERTER \
+                    FILEMANAGER \
+                    APP_DEVTOOLS"}
+
+if {${subport} ne "kf5-kdiagram"} {
+    variant karbon description {build Karbon, Calligra's vector graphics application} {}
+    variant words description {build Words, Calligra's word processing application} {}
+    variant sheets description {build Words, Calligra's spreadsheet application} {}
+    variant plan description {build Plan, Calligra's project management application} {}
+#     variant stage description {build Stage, Calligra's presentation application} {}
+#     variant braindump description {build Stage, Calligra's application for creative thinking} {}
+
+    livecheck.url   http://download.kde.org/stable
+    livecheck.regex calligra\\-(\\d+\\.\\d+\\.\\d)
+}
+
+if {${subport} eq "${name}"} {
+    version         3.0.0.1
+    distname        ${kf5.project}-${version}
+
+    description     KDE Calligra Suite
     long_description \
-                    This meta-port pulls in Calligra's components.
+                    Calligra Suite is a set of applications written to help you to accomplish your work. \
+                    It includes efficient and capable office components: Words for text processing, \
+                    Sheets for computations, Stage for presentations (currently unsupported), Plan for planning \
+                    and Karbon for vector graphics. Each of the supported components can be selected by the named variant. \
+                    Former components Krita and Kexi are now separate projects and ports.
     homepage        http://www.calligra.org
-    installs_libs   no
-    supported_archs noarch
-    distfiles
-    fetch {}
-    checksum {}
-    extract {}
-    use_configure   no
-    build {}
-    destroot {
-        xinstall -d -m 755 ${destroot}${prefix}/share/doc/kf5-installed-meta-ports
-        system "touch ${destroot}${prefix}/share/doc/kf5-installed-meta-ports/${subport}"
-    }
-} else {
+    conflicts       calligra
+
+    master_sites    http://download.kde.org/stable/${kf5.project}/${version}
+    checksums       rmd160  d58da6ab46a43ce3533f18fd78cfb699da54d154 \
+                    sha256  dedc51efc42f7dda37514d450cb772d9db37a658e0abbcf0f513712a04c1f011
+
     # shared dependencies
     platform darwin {
         depends_lib-append \
@@ -78,12 +96,13 @@ if {${subport} eq ${name}} {
                     qtdeclarative qtwebkit
     kf5.depends_frameworks \
                     kactivities karchive kcmutils kcodecs kcompletion \
-                    kconfig kconfigwidgets kcoreaddons kdbusaddons \
+                    kconfig kconfigwidgets kcoreaddons kcrash kdbusaddons \
                     kguiaddons khtml ki18n kiconthemes kitemviews \
                     kdelibs4support kio knotifications knotifyconfig \
-                    kross kparts ktexteditor ktextwidgets \
+                    kross kparts kpty kservice ktexteditor ktextwidgets \
                     kwallet kwidgetsaddons kwindowsystem \
                     kxmlgui sonnet threadweaver
+
     variant maps description {include support for maps using port:kf5-marble} {}
     if {[variant_isset maps]} {
         depends_lib-append \
@@ -92,67 +111,198 @@ if {${subport} eq ${name}} {
         configure.args-append \
                     -DWITH_Marble=OFF
     }
+
     patchfiles-append \
-                    patch-general-cmakelist.diff
-    configure.args-append \
-                    -DWITH_KGantt=OFF -DWITH_KChart=OFF
-}
-
-# given the size of the source directory we'll try our best to share as much as possible
-# between subports.
-# SADLY this messes up `port work foo` :-/
-# set parentworkpath  [join [lrange [split ${workpath} "/"] 0 end-2] "/"]
-# set workpath        "${parentworkpath}/${kf5.project}/work"
-# set worksrcpath     "${workpath}/${distname}"
-
-proc set_work_paths {dir} {
-    global workpath worksrcdir worksrcpath configure.dir build.dir configure.post_args
-    cmake.source_dir    ${worksrcpath}/${dir}
-    cmake.build_dir     ${workpath}/build-${dir}
-    ui_info "worksrcdir=${worksrcdir}"
-    ui_info "worksrcpath=${worksrcpath}"
-    ui_info "configure.dir=${configure.dir}"
-    ui_info "build.dir=${build.dir}"
-    ui_info "configure.post_args=${configure.post_args}"
-}
-
-subport kf5-calligra-common {
-    long_description \
-                    Calligra shared components
-    configure.args-append \
-                    -DRELEASE_BUILD=ON \
-                    -DPRODUCTSET="LIB_KOVECTORIMAGE \
-                        LIB_CALLIGRA \
-                        LIB_KOMAIN \
-                        LIB_KOODFREADER \
-                        LIB_MSO \
-                        LIB_KOMSOOXML \
-                        FEATURE_SCRIPTING \
-                        PLUGIN_TEXTSHAPE \
-                        APP_CONVERTER \
-                        FILEMANAGER \
-                        APP_DEVTOOLS"
-}
-
-subport kf5-karbon {
-    long_description \
-                    Karbon is Calligra's vector graphics application.
-
-    kf5.depends_frameworks \
-                    karchive kconfig kcrash kdbusaddons \
-                    ki18n kiconthemes kio kservice kparts \
-                    kpty kwidgetsaddons
-    depends_lib-append \
-                    port:kf5-calligra-common
+                    patch-general-cmakelist.diff \
+                    patch-nongui-converter.diff \
+                    patch-app-icons.diff \
+                    patch-build-for-macports.diff
 
     configure.args-append \
-                    -DPRODUCTSET=karbon \
+                    -DAPPLE_STANDALONE_BUNDLE=OFF \
+                    -DWITH_KGantt=OFF -DWITH_KChart=OFF \
                     -DRELEASE_BUILD=ON
 
-    post-destroot {
-        kf5.add_app_wrapper karbon5 karbon
+    if {[variant_isset docs]} {
+        patchfiles-append \
+                    patch-force-docs-build.diff
+        post-configure {
+            ui_info "You can ignore the CMake message about not building the documentation"
+        }
+        productset-append \
+                    DOC
+    }
+
+    pre-configure {
+        if {${selected_components} <= 0 && ${subport} eq "${name}"} {
+            ui_error "You need to select at least 1 product variant!"
+            return -code error "No variants selected"
+        }
+        # append the final PRODUCTSET definition
+        configure.args-append \
+                    -DPRODUCTSET="${productset}"
+    }
+
+    if {[variant_isset karbon]} {
+        productset-append \
+                    KARBON
+        platform darwin {
+            depends_run-append \
+                    port:pstoedit
+        }
+        set selected_components [expr ${selected_components} + 1]
+        post-destroot {
+            kf5.add_app_wrapper karbon5 karbon
+        }
+    }
+
+    if {[variant_isset words]} {
+        productset-append \
+                    WORDS
+        set selected_components [expr ${selected_components} + 1]
+        patchfiles-append \
+                    patch-wordsfilters-odf.diff
+        post-destroot {
+            kf5.add_app_wrapper calligrawords5 calligrawords
+        }
+    }
+
+    if {[variant_isset sheets]} {
+        productset-append \
+                    SHEETS
+        set selected_components [expr ${selected_components} + 1]
+        post-destroot {
+            kf5.add_app_wrapper calligrasheets5 calligrasheets
+        }
+    }
+
+    if {[variant_isset plan]} {
+        depends_lib-append \
+                    port:kf5-kdiagram
+        configure.args-replace \
+                    -DWITH_KGantt=OFF -DWITH_KGantt=ON
+        configure.args-replace \
+                    -DWITH_KChart=OFF -DWITH_KChart=ON
+        productset-append \
+                    PLAN
+        set selected_components [expr ${selected_components} + 1]
+        patchfiles-append \
+                    patch-planwork-servicename.diff
+        post-destroot {
+            kf5.add_app_wrapper calligraplan5 calligraplan
+            kf5.add_app_wrapper calligraplanwork5 calligraplanwork
+        }
+    }
+
+#     if {[variant_isset stage]} {
+#         depends_lib-append \
+#                     port:kf5-kdiagram
+#         configure.args-replace \
+#                     -DWITH_KGantt=OFF -DWITH_KGantt=ON
+#         configure.args-replace \
+#                     -DWITH_KChart=OFF -DWITH_KChart=ON
+#         productset-append \
+#                     STAGE
+#         set selected_components [expr ${selected_components} + 1]
+#         post-destroot {
+#             kf5.add_app_wrapper calligrastage5 calligrastage
+#         }
+#     }
+
+#     if {[variant_isset braindump]} {
+#         depends_lib-append \
+#                     port:kf5-kdiagram
+#         configure.args-replace \
+#                     -DWITH_KGantt=OFF -DWITH_KGantt=ON
+#         configure.args-replace \
+#                     -DWITH_KChart=OFF -DWITH_KChart=ON
+#         productset-append \
+#                     BRAINDUMP
+#         set selected_components [expr ${selected_components} + 1]
+#         post-destroot {
+#             kf5.add_app_wrapper braindump5 braindump
+#         }
+#     }
+}
+
+# stub ports for easier installing of individual components
+foreach comp {karbon calligrawords calligrasheets calligraplan} {
+    subport kf5-${comp} {
+        installs_libs   no
+        supported_archs noarch
+        depends_lib-append \
+                        port:kf5-calligra-suite
+        distfiles
+        fetch {}
+        checksum {}
+        extract {}
+        patchfiles
+        use_configure   no
+        build {}
+        destroot {
+            xinstall -d -m 755 ${destroot}${prefix}/share/doc/kf5-installed-meta-ports
+            system "touch ${destroot}${prefix}/share/doc/kf5-installed-meta-ports/${subport}"
+        }
+    }
+    if {${subport} eq "kf5-${comp}"} {
+        switch ${comp} {
+            "karbon" {
+                description \
+                        Calligra's vector graphics application
+                long_description \
+                        Karbon is Calligra's vector graphics application.
+                default_variants +karbon
+                require_active_variants kf5-calligra-suite karbon
+                productset-append \
+                        KARBON
+            }
+            "calligrawords" {
+                description \
+                        Calligra's word processing application
+                long_description \
+                        Words is Calligra's word processing application.
+                default_variants +words
+                require_active_variants kf5-calligra-suite words
+                productset-append \
+                        WORDS
+            }
+            "calligrasheets" {
+                description \
+                        Calligra's spreadsheet application
+                long_description \
+                        Sheets is Calligra's spreadsheet application.
+                default_variants +sheets
+                require_active_variants kf5-calligra-suite sheets
+                productset-append \
+                        SHEETS
+            }
+            "calligraplan" {
+                description \
+                        Calligra's project management application
+                long_description \
+                        Plan is Calligra's project management application.
+                default_variants +plan
+                require_active_variants kf5-calligra-suite plan
+                productset-append \
+                        PLAN
+            }
+        }
     }
 }
 
-livecheck.url       http://download.kde.org/stable
-livecheck.regex     calligra\\-(\\d+\\.\\d+\\.\\d)
+subport kf5-kdiagram {
+    description     Powerful libraries (KChart, KGantt) for creating business diagrams.
+    long_description \
+                    ${description}
+    version         2.6.0
+    kf5.set_project kdiagram
+    homepage        https://api.kde.org/extragear-api/graphics-apidocs/kdiagram/html
+    master_sites    http://download.kde.org/stable/${kf5.project}/${version}/src
+    distname        ${kf5.project}-${version}
+    checksums       rmd160  db27a2d75206a6bf82250d2fd6db25aa7c5c6017 \
+                    sha256  02788dad7e15c64b74a2d1073c5910469ab4cf46ba905030c1713dce45981882
+    kf5.depends_qt5_components \
+                    qtsvg qttools
+    livecheck.url   http://download.kde.org/stable/${kf5.project}
+}
+

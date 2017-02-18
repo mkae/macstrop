@@ -1,0 +1,64 @@
+diff --git src/filewidgets/kfilewidget.cpp src/filewidgets/kfilewidget.cpp
+index 41ac5a7..4c08f0c 100644
+--- src/filewidgets/kfilewidget.cpp
++++ src/filewidgets/kfilewidget.cpp
+@@ -70,6 +70,7 @@
+ #include <QPushButton>
+ #include <QStandardPaths>
+ #include <qmimedatabase.h>
++#include <QStyleFactory>
+ 
+ #include <kshell.h>
+ #include <kmessagebox.h>
+@@ -502,6 +503,19 @@ KFileWidget::KFileWidget(const QUrl &_startDir, QWidget *parent)
+     menu->addAction(coll->action(QStringLiteral("preview")));
+ 
+     menu->setDelayed(false);
++    if (!qEnvironmentVariableIsSet("KIOFILEWIDGET_FORCE_QTCURVE") && QApplication::style()->objectName() == QLatin1String("qtcurve")) {
++#ifdef Q_OS_MACOS
++        static QPointer<QStyle> fusionStyle = QStyleFactory::create("macintosh");
++        if (!fusionStyle) {
++            fusionStyle = QStyleFactory::create("fusion");
++        }
++#else
++        static QPointer<QStyle> fusionStyle = QStyleFactory::create("fusion");
++#endif
++        if (fusionStyle) {
++            menu->menu()->setStyle(fusionStyle);
++        }
++    }
+     connect(menu->menu(), SIGNAL(aboutToShow()),
+             d->ops, SLOT(updateSelectionDependentActions()));
+ 
+diff --git src/filewidgets/kdiroperator.cpp src/filewidgets/kdiroperator.cpp
+index e4347bb..7feb206 100644
+--- src/filewidgets/kdiroperator.cpp
++++ src/filewidgets/kdiroperator.cpp
+@@ -44,6 +44,7 @@
+ #include <QTimer>
+ #include <QDebug>
+ #include <QMimeDatabase>
++#include <QStyleFactory>
+ 
+ #include <kdirlister.h>
+ #include <kfileitemdelegate.h>
+@@ -2042,6 +2043,19 @@ void KDirOperator::setupMenu(int whichActions)
+         d->actionMenu->addAction(d->actionCollection->action(QStringLiteral("file manager")));
+         d->actionMenu->addAction(d->actionCollection->action(QStringLiteral("properties")));
+     }
++    if (!qEnvironmentVariableIsSet("KIOFILEWIDGET_FORCE_QTCURVE") && QApplication::style()->objectName() == QLatin1String("qtcurve")) {
++#ifdef Q_OS_MACOS
++        static QPointer<QStyle> fusionStyle = QStyleFactory::create("macintosh");
++        if (!fusionStyle) {
++            fusionStyle = QStyleFactory::create("fusion");
++        }
++#else
++        static QPointer<QStyle> fusionStyle = QStyleFactory::create("fusion");
++#endif
++        if (fusionStyle) {
++            d->actionMenu->menu()->setStyle(fusionStyle);
++        }
++    }
+ }
+ 
+ void KDirOperator::updateSortActions()

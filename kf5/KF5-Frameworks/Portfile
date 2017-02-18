@@ -3,7 +3,7 @@
 # Copyright (c) 2015, 2016 R.J.V. Bertin
 
 PortSystem          1.0
-set kf5.framework   yes
+set kf5.framework   placeholder
 PortGroup           kf5 1.1
 PortGroup           code-sign 1.0
 
@@ -22,16 +22,58 @@ if {${os.platform} eq "darwin"} {
     test.run        yes
 }
 
+# mapping framework names to their tier; entries in build order
+set kf5::tier1_frameworks {kapidox attica karchive kcodecs kconfig kcoreaddons kdbusaddons kdnssd kguiaddons ki18n kidletime kimageformats kitemmodels kitemviews kplotting ksyntaxhighlighting kwidgetsaddons kwindowsystem solid sonnet threadweaver}
+set kf5::tier2_frameworks {kauth kcompletion kcrash kdoctools kfilemetadata kjobwidgets knotifications kpackage kpty kunitconversion}
+set kf5::tier3_frameworks {kconfigwidgets kiconthemes kservice kglobalaccel ktextwidgets kxmlgui kbookmarks kwallet kio baloo kactivities kdeclarative kcmutils kinit kded kparts kdewebkit kdesignerplugin kdesu kemoticons knewstuff knotifyconfig kpeople plasma-framework ktexteditor kxmlrpcclient krunner}
+set kf5::tier4_frameworks {frameworkintegration}
+set kf5::portingaid_frameworks {kdelibs4support kjs khtml kross}
+
+proc kf5::tier {{fw -1}} {
+    global subport kf5.portingAid
+
+    if {${fw} == -1} {
+        if {[info exists kf5.portingAid] && ${kf5.portingAid}} {
+            return "portingAid"
+        } else {
+            set fw [string map {"kf5-" ""} ${subport}]
+        }
+    }
+    foreach t {1 2 3 4} {
+        namespace upvar ::kf5 tier${t}_frameworks lname
+        if {[lsearch -exact $lname ${fw}] >= 0} {
+            return "tier${t}"
+        }
+    }
+    if {[lsearch -exact ${kf5::portingaid_frameworks} ${fw}] >= 0} {
+        return "portingAid"
+    } elseif {${fw} ne "placeholder"} {
+        ui_error "unknown framework ${fw} in kf5::tier, `port file ${subport}` line [dict get [info frame 0] line]"
+        return -code error "unknown framework"
+    }
+}
+
 # check what frameworks version we will use; kf5.version or kf5.latest_version
 # if it's different and the user enabled the alternative (for port devs. only!).
-if {[file exists ${filespath}/upgrading-to-latest.tcl]} {
-#     source ${filespath}/upgrading-to-latest.tcl
-    kf5.use_latest  kf5.version
-    version         ${kf5.version}
-    set checksums.table \
+# add the tier levels one by one to the switch to override the default (= using kf5.version}).
+# This way, upgrades can be handled and committed per tier (in order!!).
+if {(${kf5.latest_version} ne ${kf5.version}) && [file exists ${filespath}/enable_latest]} {
+    set tier [kf5::tier]
+#         "tier2" -
+#         "tier3" -
+#         "tier4" -
+#         "portingAid" -
+    switch ${tier} {
+        "tier1" {
+            kf5.use_latest  kf5.version
+            version         ${kf5.version}
+            set checksums.table \
                     checksums-${kf5.version}.table
-    set PVERSION    ""
-} else {
+            set PVERSION    ""
+        }
+    }
+}
+if {![info exists checksums.table]} {
     set checksums.table \
                     checksums.table
     set PVERSION    ""
@@ -177,9 +219,13 @@ subport kf5-kapidox {
                     port:py27-doxyqml \
                     port:py27-pygraphviz
     }
+    # https://commits.kde.org/kapidox/5ff9b4839a5daaca84585eee85ae10c1e6d9ff7c
     patchfiles-append \
-                    kapidox/patch-kapidox-include-objc++.diff \
-                    kapidox/patch-lucidagrande.diff \
+                    kapidox/patch-kapidox-include-objc++.diff
+    patchfiles-append \
+                    kapidox/patch-lucidagrande.diff
+    # https://git.reviewboard.kde.org/r/129661/ (20161216)
+    patchfiles-append \
                     kapidox/patch-enable-chm.diff
     configure.args-append \
                     -DPYTHON_EXECUTABLE=${prefix}/bin/python${kf5::pyversion}
@@ -371,9 +417,6 @@ subport kf5-kcoreaddons {
     kf5::set_checkums
     depends_lib-append \
                     port:shared-mime-info
-#    # https://git.reviewboard.kde.org/r/129267/
-#    versioned_patchfile_append \
-#                    kcoreaddons patch-add-posix_fallocate.diff
     platform darwin {
         configure.args-append \
                     -DKDE4_DEFAULT_HOME=Library/Preferences/KDE
@@ -455,9 +498,12 @@ subport kf5-kidletime {
     set kf5.framework \
                     kidletime
     kf5::set_checkums
+    # RJVB's Mac/IOKit KIdleTime backend provides relatively high precision idle time detection
+    # but the main reason for which it's not acceptable upstream is that there is no way around
+    # using a polling implementation with IOKit (that I know of).
     patchfiles-append \
                     kidletime/patch-kidletime-use-iokit.diff \
-                    kidletime/patch-kidletime-xsync.diff
+                    kidletime/patch-kidletime-xsync-quiet.diff
     if {[variant_isset docs]} {
         patchfiles-append \
                     kidletime/patch-kidletime-documentation.diff
@@ -536,25 +582,9 @@ subport kf5-ksyntaxhighlighting {
                     More than 250 syntax definition files are included, additional ones are \
                     picked up from the file system if present, so you can easily extend this \
                     through application-specific syntax definitions for example.
-    if {[vercmp ${version} 5.29.0] < 0} {
-        # this is a sneak preview; KSyntaxHighlighting was released after 5.27.0
-        revbump_for_version 0 5.28.0
-        version         5.28.0
-        set kf5.version 5.28.0
-        set kf5.branch  5.28
-        kf5.set_paths
-        set kf5.framework \
-                    syntax-highlighting
-        checksums   rmd160  bbdd78374f3fc548ac134ae5d872851dd26cc313 \
-                    sha256  be3d4f730e8bfde843de393eeb6bd4842a052f0c438455de325b3d3269a3c13d
-        # http://commits.kde.org/syntax-highlighting/804f15240bdcbc2a4e11dd2c635e0bfb794f30e4
-        patchfiles-append \
-                    ksyntaxhighlighting/patch-ksyntaxhilite-nongui.diff
-    } else {
-        set kf5.framework \
-                    syntax-highlighting
-        kf5::set_checkums
-    }
+    set kf5.framework \
+                syntax-highlighting
+    kf5::set_checkums
     depends_build-append \
                     path:bin/perl5:perl5
     kf5.depends_qt5_components \
@@ -580,14 +610,6 @@ subport kf5-kwidgetsaddons {
     set kf5.framework \
                     kwidgetsaddons
     kf5::set_checkums
-    platform darwin {
-#        # http://commits.kde.org/kwidgetsaddons/d2bd8ef93783bc0f30de2db04bf5a95982cea864
-#        versioned_patchfile_append \
-#                    kwidgetsaddons patch-kwidgaddons-restrict-WId-usage.diff
-    }
-#    # http://commits.kde.org/kwidgetsaddons/40f46e66e136234bfb7aa60b732708c5f0573967
-#    versioned_patchfile_append \
-#                    kwidgetsaddons patch-kwidgaddons-preserve-window-icon.diff
 }
 
 subport kf5-kwindowsystem {
@@ -652,21 +674,21 @@ subport kf5-kwindowsystem-devel {
     set kf5.framework \
                     kwindowsystem
     fetch.type      git
-# #     v4.100.0-rc1-177-g5f183e2
-#     git.branch      5f183e29ad3b981195444e0b12f12cf631c68c27
-#     v4.100.0-rc1-188-ge993b77
-    git.branch      e993b77c503bccf2ab68dc8a61abb633c6fcb8a0
-    version         ${version}.4.100.0.188
+# #     v4.100.0-rc1-188-ge993b77
+#     git.branch      e993b77c503bccf2ab68dc8a61abb633c6fcb8a0
+#     v4.100.0-rc1-193-gb12d7ea
+    git.branch      b12d7ea341bcd3e567c647fed7f00d027dd9556e
+    version         ${version}.4.100.0.193
     platform darwin {
         test.cmd    echo
         test.target no tests for this framework
 
-        # submit upstream after porting all KWindowSystem adaptations for OS X from KDE4
         pre-patch {
             file delete \
                     ${worksrcpath}/src/platforms/osx/kwindowinfo.cpp \
                     ${worksrcpath}/src/platforms/osx/kwindowinfo_mac_p.h
         }
+        # https://git.reviewboard.kde.org/r/126291/
         patchfiles-append \
                     kwindowsystem/patch-kwinsys-osx-plugin.diff
         variant x11 description {build the X11 plugin for use with Qt's XCB QPA} {
@@ -679,6 +701,7 @@ subport kf5-kwindowsystem-devel {
             depends_lib-append \
                     path:${qt_frameworks_dir}/QtX11Extras.framework/QtX11Extras:qt5-kde-x11 \
                     port:xorg-libXfixes
+            # don't bother presenting this one upstream...
             patchfiles-append \
                     kwindowsystem/patch-kwinsys-xcb-plugin.diff
             post-destroot {
@@ -686,6 +709,8 @@ subport kf5-kwindowsystem-devel {
             }
         }
     }
+    patchfiles-append \
+                    kwindowsystem/patch-shift-modifier.diff
 }
 
 subport kf5-solid {
@@ -702,10 +727,8 @@ subport kf5-solid {
                     port:flex \
                     port:bison
     } else {
-        # apparently not needed after all:
-        #            patch-solid-findudev.diff
         patchfiles-append \
-                    patch-solid-xdgdatadirs.diff
+                    solid/patch-solid-xdgdatadirs.diff
         post-patch {
             reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/cmake/FindMediaPlayerInfo.cmake
         }
@@ -842,13 +865,6 @@ subport kf5-kcrash {
     kf5::set_checkums
     kf5.depends_frameworks \
                     kcoreaddons kwindowsystem
-    platform darwin {
-#        # http://commits.kde.org/kcrash/4b8b7597421320bcb502cc0c36134e2f8d90aec9
-#        versioned_patchfile_append \
-#                    kcrash patch-kcrash-dont-closeAllFDs.diff
-#        versioned_patchfile_append \
-#                    kcrash patch-kcrash-no-display.diff
-    }
 }
 
 subport kf5-kdoctools {
@@ -912,9 +928,6 @@ subport kf5-kfilemetadata {
     # reported upstream
 #     patchfiles-append \
 #                     kfilemetadata/patch-kfilemdata-compversion5.diff
-#    # http://commits.kde.org/kfilemetadata/ce597d98de24d5456e7e05c0306a0498a5826723
-#    versioned_patchfile_append \
-#                    kfilemetadata patch-kfilemdata-findffmpeg.diff
     kf5.kde4compat {
         # even in kde4compat mode we can be in conflict with port:kfilemetadata
         # if the KDE4 ports were installed without headerfile migration.
@@ -977,15 +990,14 @@ subport kf5-knotifications {
         patchfiles-append \
                     knotifications/patch-knotifications-ignore-full_session-envvar.diff
     }
-    # provide names for the sound file and notifyrc warnings (and make a simple beep):
+    # awaiting brilliant ideas: https://git.reviewboard.kde.org/r/128043/
     patchfiles-append \
                     knotifications/patch-knotifications-better-sound-warning+support-sysbeep.diff
     # https://git.reviewboard.kde.org/r/126369/
     patchfiles-append \
                     knotifications/patch-knotifications-OSX-adaptations.diff
-#    # fixed in 5.28:
-#    versioned_patchfile_append \
-#                    knotifications patch-fix-crash-notifybyaudio.diff
+    patchfiles-append \
+                    knotifications/patch-knotifications-OSX-adaptations-testing.diff
     test.cmd        echo
     test.target     no tests for this framework
 }
@@ -1191,6 +1203,8 @@ subport kf5-kdeclarative {
 }
 
 subport kf5-kded {
+    # revbump for Qt 5.7.1
+    revbump_for_version 1 5.29.0
     description     Central daemon of KDE work spaces
     long_description \
                     KDED is the KDE Daemon which runs in the background and performs \
@@ -1373,6 +1387,7 @@ subport kf5-kinit {
 }
 
 subport kf5-kio {
+    revbump_for_version 2 5.29.0
     description     Network transparent access to files and data
     long_description \
                     This framework implements almost all the file management functions you \
@@ -1422,10 +1437,11 @@ subport kf5-kio {
     # not a big success yet:
     patchfiles-append \
                     kio/patch-kio-kcookiejar-tofront.diff
-#    # this was reviewed, accepted, committed and apparently removed (or the commit misfired)
-#    # re-committed in 8bd14b31b85da723badb6ab910b25a097d82f077.
-#    versioned_patchfile_append \
-#                    kio patch-kio-use-osxtrash.diff
+    # prevent QtCurve in the Options menu of the KFileWidget
+    # unless KIOFILEWIDGET_FORCE_QTCURVE is set in the env.
+    # The option menu is rendered using the Fusion style instead.
+    patchfiles-append \
+                    kio/patch-kio-filewidget-no-qtcurve.diff
     post-activate {
         # allow for signing the kioslave on OS X to avoid warnings in the system.log
         codesign ${prefix}/libexec/kde5/kf5/kioslave -
@@ -1550,6 +1566,8 @@ subport kf5-plasma-framework {
 }
 
 subport kf5-kservice {
+    # revbump for Qt 5.7.1
+    revbump_for_version 1 5.29.0
     description     Plugin framework for desktop services
     long_description \
                     KService provides a plugin framework for handling desktop services. Services can \
@@ -1569,6 +1587,13 @@ subport kf5-kservice {
                     kservice/patch-kservice-xdg-menu-prefix.diff \
                     kservice/patch-kservice-fix-invokeBrowser.diff \
                     kservice/patch-kservice-silence-warnings.diff
+    # added for Qt 5.7.1:
+    patchfiles-append \
+                    kservice/patch-skip-applications.diff \
+                    kservice/patch-no-delete-applications.diff
+    # https://git.reviewboard.kde.org/r/129733/
+    patchfiles-append \
+                    kservice/patch-kservice-dontfollow-symlinks.patch
     post-patch {
         reinplace "s|@APPMENUPREFIX@|kf5-|g" ${worksrcpath}/src/sycoca/vfolder_menu.cpp
     }
@@ -1926,6 +1951,8 @@ subport kf5-kdelibs4support {
                     kiconthemes kio knotifications kparts \
                     kservice ktextwidgets kunitconversion \
                     kwidgetsaddons kwindowsystem kxmlgui
+    kf5.depends_run_frameworks \
+                    kemoticons
     platform darwin {
         # pretend KDE_FULL_SESSION is set in order to get full support for theming settings
         patchfiles-append \
@@ -2003,6 +2030,8 @@ subport kf5-kdelibs4support-devel {
                     kiconthemes kio knotifications kparts \
                     kservice ktextwidgets kunitconversion \
                     kwidgetsaddons kwindowsystem kxmlgui
+    kf5.depends_run_frameworks \
+                    kemoticons
     platform darwin {
         # pretend KDE_FULL_SESSION is set in order to get full support for theming settings
         patchfiles-append \
@@ -2280,10 +2309,10 @@ subport kf5-portingaid-frameworks {
     homepage        http://projects.kde.org/projects/ \
                     http://api.kde.org/frameworks-api/frameworks5-apidocs/#porting-aids
     kf5.depends_build_frameworks \
-                    kdelibs4support kjs khtml kross krunner
-    # to be done: kjsembed, kmediaplayer, kross
+                    kdelibs4support kjs khtml kross
+    # to be done: kjsembed, kmediaplayer
     # install order:
-    # kf5-kdelibs4support[-devel] kf5-kjs kf5-khtml
+    # kf5-kdelibs4support[-devel] kf5-kjs kf5-khtml kf5-kross
     installs_libs   no
     supported_archs noarch
     distfiles

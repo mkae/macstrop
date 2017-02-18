@@ -69,6 +69,11 @@ if {${subport} eq "${name}-devel"} {
 }
 
 if {(${subport} eq "${name}-${PARSER}") || (${subport} eq "${name}-${PARSER}-devel")} {
+    variant fast description "Disables expensive parser features (currently only the \"unknown declaration solution\" finder" {
+        # NB: depends on the prevent-beachballing patch!
+        configure.cppflags-append \
+                    -DNO_UNKNOWNDECLARATION_PROBLEM_SUPPORT
+    }
     variant system conflicts llvm35 llvm36 llvm37 llvm38 llvm39 description "Use the system LLVM/Clang for the C/C++ parser" {}
     set lldversions {3.6 3.7 3.8 3.9}
     set llvariant ""
@@ -114,16 +119,20 @@ kf5.require_kf5compat -port kdevelop include/kdevplatform/kdevplatformversion.h
 if {(${subport} eq "${name}-devel") || (${subport} eq "${name}-${PARSER}-devel")} {
     fetch.type      git
     git.url     git://anongit.kde.org/kdevelop
-# #     v4.90.91-854-g10d6d66
-#     git.branch      10d6d660015c086ec5b16d4129b2aad6e8f2dfba
-#     v4.90.91-876-gd56117d68f
-    git.branch      d56117d68f29fff86103758078d6cc0f7bae6dab
-    # patch up the trailing git version nr
-    version         5.0.3.876
+#     v5.0.80-43-g013bca4
+#     git.branch      013bca4f58af3d11964440f3b440730fb47c85e5
+#     v5.0.80-82-ga4a28c803e
+    git.branch      a4a28c803e748e7016dea20bde437e64b0c88c8e
+    version         5.0.80.82
     depends_lib-append \
                     port:kf5-kdevplatform-devel
-    worksrcdir      ${name}-5
-    distname        ${name}-5
+    if {${subport} eq "${name}-${PARSER}-devel"} {
+        worksrcdir  ${name}-clangparser-5
+        distname    ${name}-clangparser-5
+    } else {
+        worksrcdir  ${name}-5
+        distname    ${name}-5
+    }
     set PPREFIX     devel
 } else {
     version         5.0.3
@@ -203,7 +212,7 @@ patchfiles-append   patch-missing-header-declbuilder.diff \
                     patch-no-krunner.diff \
                     ${PPREFIX}/patch-rename-kdevexclam.diff \
                     ${PPREFIX}/patch-optlocal-manpages.diff \
-                    patch-open-docs-from-Finder.diff \
+                    ${PPREFIX}/patch-open-docs-from-Finder.diff \
                     patch-menu-under-x11.diff \
                     patch-cmake-macports-first.diff \
                     ${PPREFIX}/patch-extended-support4Objc.patch
@@ -217,10 +226,19 @@ patchfiles-append   patch-clangproblem.diff
 # "fix" some known source(s) of beachballing (main thread blocking)
 patchfiles-append   patch-prevent-beachballing.diff
 
+variant qthelpviewer description {use Qt's Assistant as an external help viewer, via a symlink kdevelop-qthelp-viewer} {
+    if {[tbool qt5.using_kde]} {
+        qt5.depends_run_component \
+                    assistant
+    }
+    patchfiles-append \
+                    ${PPREFIX}/patch-use-external-qtassistant.diff
+}
+
 platform darwin {
     # on OS X only lldb can be used, so don't build the gdb-based debugging facility
     if {![variant_isset gdb]} {
-        if {${subport} eq "${name}-devel" || ${subport} eq "${name}-clang-parser-devel"} {
+        if {${subport} eq "${name}-devel" || ${subport} eq "${name}-${PARSER}-devel"} {
             patchfiles-append \
                     devel/patch-disable-gdbugger.diff
         } else {
@@ -234,7 +252,7 @@ platform linux {
                     patch-binarypath=kdevelop5.diff
 }
 
-if {${subport} eq "${name}-devel" || ${subport} eq "${name}-clang-parser-devel"} {
+if {${subport} eq "${name}-devel" || ${subport} eq "${name}-${PARSER}-devel"} {
     patchfiles-append \
                     devel/patch-kdevplatform-add-style-menu-uirc.diff
     patchfiles-append \
@@ -248,7 +266,7 @@ if {${subport} eq "${name}-devel" || ${subport} eq "${name}-clang-parser-devel"}
 }
 
 # our kdev_format_source has suffix 5
-patchfiles-append   patch-kdevformatsource.diff
+patchfiles-append   ${PPREFIX}/patch-kdevformatsource.diff
 
 
 if {${subport} eq "${name}-translations"} {
@@ -257,7 +275,7 @@ if {${subport} eq "${name}-translations"} {
                    ${distname}/CMakeLists.txt ${distname}/cmake ${distname}/po
     # NB: we *reset* patchfiles here!
     patchfiles      patch-only-translations.diff
-} elseif {${subport} eq ${name} || ${subport} eq "${name}-clang-parser"} {
+} elseif {${subport} eq ${name} || ${subport} eq "${name}-${PARSER}"} {
     patchfiles-append \
                     patch-no-translations.diff
 }
@@ -347,6 +365,12 @@ if {(${subport} eq "${name}") || (${subport} eq "${name}-devel")} {
     post-destroot {
         file rename ${destroot}${prefix}/bin/kdevelop ${destroot}${prefix}/bin/kdevelop5
         file rename ${destroot}${prefix}/bin/kdevelop\! ${destroot}${prefix}/bin/kdevelop5\!
+        xinstall -m 755 ${filespath}/cmake2port ${destroot}${prefix}/bin/
+        xinstall -m 755 ${filespath}/make2port ${destroot}${prefix}/bin/
+        xinstall -m 755 ${filespath}/make-mp ${destroot}${prefix}/bin/
+        xinstall -m 755 ${filespath}/kdevelop-qthelp-viewer ${destroot}${prefix}/bin/kdevelop-qthelp-viewer
+        reinplace "s|@PREFIX@|${prefix}|g" ${destroot}${prefix}/bin/make-mp
+        reinplace "s|@QTBINDIR@|${qt_bins_dir}|g" ${destroot}${prefix}/bin/kdevelop-qthelp-viewer
     }
 } elseif {${subport} eq "${name}-translations"} {
     # nothing to be seen here for now

@@ -1,0 +1,388 @@
+From d7f30f1d2f7a862d687360877c730dc0d6030500 Mon Sep 17 00:00:00 2001
+From: "R.J.V. Bertin" <rjvbertin@gmail.com>
+Date: Sun, 15 Jan 2017 17:58:53 +0100
+Subject: [PATCH 1/1] C++11 requires a space between literal and identifier
+
+---
+ backends/sesame2/jniwrapper.cpp                        |  4 ++--
+ backends/sesame2/sesame2bindingset.cpp                 |  2 +-
+ backends/sesame2/sesame2iterator.cpp                   |  2 +-
+ backends/sesame2/sesame2model.cpp                      |  6 +++---
+ backends/sesame2/sesame2queryresultiteratorbackend.cpp |  4 ++--
+ backends/sesame2/sesame2repository.cpp                 | 12 ++++++------
+ backends/sesame2/sesame2repositoryconnection.cpp       | 16 ++++++++--------
+ backends/sesame2/sesame2sopranowrapper.cpp             |  2 +-
+ backends/sesame2/sesame2utils.cpp                      | 18 +++++++++---------
+ backends/sesame2/sesame2valuefactory.cpp               | 14 +++++++-------
+ soprano/sopranodirs.cpp                                |  4 ++--
+ 11 files changed, 42 insertions(+), 42 deletions(-)
+
+diff --git backends/sesame2/jniwrapper.cpp backends/sesame2/jniwrapper.cpp
+index 757e6e9..2846fc6 100644
+--- backends/sesame2/jniwrapper.cpp
++++ backends/sesame2/jniwrapper.cpp
+@@ -66,7 +66,7 @@ JNIWrapper* JNIWrapper::instance()
+         // prepare the VM options
+         JavaVMInitArgs vmArgs;
+         JavaVMOption vmOptions[4];
+-        vmOptions[0].optionString = ( char* )"-Djava.class.path="SESAME2_CLASSPATH;
++        vmOptions[0].optionString = ( char* )"-Djava.class.path=" SESAME2_CLASSPATH;
+         vmOptions[1].optionString = ( char* )"-verbose:jni,gc,class";
+         vmOptions[2].optionString = ( char* )"-Xms256m";
+         vmOptions[3].optionString = ( char* )"-Xmx256m";
+@@ -182,7 +182,7 @@ Soprano::Error::Error JNIWrapper::convertAndClearException()
+     if ( exception ) {
+         env()->ExceptionDescribe();
+         JNIObjectWrapper exWr( exception );
+-        jmethodID id = exWr.getMethodID( "getMessage", "()L"JAVA_LANG_STRING";" );
++        jmethodID id = exWr.getMethodID( "getMessage", "()L" JAVA_LANG_STRING ";" );
+         QString message = JStringRef( exWr.callObjectMethod( id ) ).toQString();
+         env()->ExceptionClear();
+         return Soprano::Error::Error( "Sesame2 backend error: '" + message + "'", Soprano::Error::ErrorUnknown );
+diff --git backends/sesame2/sesame2bindingset.cpp backends/sesame2/sesame2bindingset.cpp
+index 4333f98..822a2b4 100644
+--- backends/sesame2/sesame2bindingset.cpp
++++ backends/sesame2/sesame2bindingset.cpp
+@@ -32,7 +32,7 @@ public:
+     }
+ 
+     jmethodID IDgetValue() {
+-        return m_parent->getMethodID( "getValue", "(L"JAVA_LANG_STRING";)L"ORG_OPENRDF_MODEL_VALUE";" );
++        return m_parent->getMethodID( "getValue", "(L" JAVA_LANG_STRING ";)L" ORG_OPENRDF_MODEL_VALUE ";" );
+     }
+ 
+ private:
+diff --git backends/sesame2/sesame2iterator.cpp backends/sesame2/sesame2iterator.cpp
+index 1c87b1d..f92aac9 100644
+--- backends/sesame2/sesame2iterator.cpp
++++ backends/sesame2/sesame2iterator.cpp
+@@ -44,7 +44,7 @@ public:
+ 
+     jmethodID IDnext() {
+         if ( !m_IDnext ) {
+-            m_IDnext = m_parent->getMethodID( "next", "()L"JAVA_LANG_OBJECT";" );
++            m_IDnext = m_parent->getMethodID( "next", "()L" JAVA_LANG_OBJECT ";" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDnext;
+diff --git backends/sesame2/sesame2model.cpp backends/sesame2/sesame2model.cpp
+index db92204..720c85a 100644
+--- backends/sesame2/sesame2model.cpp
++++ backends/sesame2/sesame2model.cpp
+@@ -143,7 +143,7 @@ Soprano::QueryResultIterator Soprano::Sesame2::Model::executeQuery( const QStrin
+ 
+     jfieldID sparqlID = JNIWrapper::instance()->env()->GetStaticFieldID( JNIWrapper::instance()->env()->FindClass( ORG_OPENRDF_QUERY_QUERYLANGUAGE ),
+                                                                          "SPARQL",
+-                                                                         "L"ORG_OPENRDF_QUERY_QUERYLANGUAGE";" );
++                                                                         "L" ORG_OPENRDF_QUERY_QUERYLANGUAGE ";" );
+     JObjectRef sparqlQueryLang = JNIWrapper::instance()->env()->GetStaticObjectField( JNIWrapper::instance()->env()->FindClass( ORG_OPENRDF_QUERY_QUERYLANGUAGE ),
+                                                                                       sparqlID );
+ 
+@@ -155,11 +155,11 @@ Soprano::QueryResultIterator Soprano::Sesame2::Model::executeQuery( const QStrin
+         // evaluate the query
+         if ( JNIWrapper::instance()->env()->IsInstanceOf( queryObject, JNIWrapper::instance()->env()->FindClass( ORG_OPENRDF_QUERY_TUPLEQUERY ) ) ) {
+             JNIObjectWrapper queryWrapper( queryObject );
+-            it = new QueryResultIteratorBackend( queryWrapper.callObjectMethod( queryWrapper.getMethodID( "evaluate", "()L"ORG_OPENRDF_QUERY_TUPLEQUERYRESULT";" ) ), this );
++            it = new QueryResultIteratorBackend( queryWrapper.callObjectMethod( queryWrapper.getMethodID( "evaluate", "()L" ORG_OPENRDF_QUERY_TUPLEQUERYRESULT ";" ) ), this );
+         }
+         else if ( JNIWrapper::instance()->env()->IsInstanceOf( queryObject, JNIWrapper::instance()->env()->FindClass( ORG_OPENRDF_QUERY_GRAPHQUERY ) ) ) {
+             JNIObjectWrapper queryWrapper( queryObject );
+-            it = new QueryResultIteratorBackend( queryWrapper.callObjectMethod( queryWrapper.getMethodID( "evaluate", "()L"ORG_OPENRDF_QUERY_GRAPHQUERYRESULT";" ) ), this );
++            it = new QueryResultIteratorBackend( queryWrapper.callObjectMethod( queryWrapper.getMethodID( "evaluate", "()L" ORG_OPENRDF_QUERY_GRAPHQUERYRESULT ";" ) ), this );
+         }
+         else {
+             JNIObjectWrapper queryWrapper( queryObject );
+diff --git backends/sesame2/sesame2queryresultiteratorbackend.cpp backends/sesame2/sesame2queryresultiteratorbackend.cpp
+index 60558af..910fac0 100644
+--- backends/sesame2/sesame2queryresultiteratorbackend.cpp
++++ backends/sesame2/sesame2queryresultiteratorbackend.cpp
+@@ -53,9 +53,9 @@ public:
+ 
+         // cache the binding names, it is just simpler
+         if ( isTupleResult ) {
+-            JObjectRef bindingList = result->callObjectMethod( result->getMethodID( "getBindingNames", "()L"JAVA_UTIL_LIST";" ) );
++            JObjectRef bindingList = result->callObjectMethod( result->getMethodID( "getBindingNames", "()L" JAVA_UTIL_LIST ";" ) );
+             JNIObjectWrapper listWrapper( bindingList );
+-            Iterator it( listWrapper.callObjectMethod( listWrapper.getMethodID( "iterator", "()L"JAVA_UTIL_ITERATOR";" ) ) );
++            Iterator it( listWrapper.callObjectMethod( listWrapper.getMethodID( "iterator", "()L" JAVA_UTIL_ITERATOR ";" ) ) );
+             while ( it.hasNext() ) {
+                 bindingNames.append( JStringRef( it.next() ).toQString() );
+             }
+diff --git backends/sesame2/sesame2repository.cpp backends/sesame2/sesame2repository.cpp
+index b789db7..7259d44 100644
+--- backends/sesame2/sesame2repository.cpp
++++ backends/sesame2/sesame2repository.cpp
+@@ -65,7 +65,7 @@ Soprano::Sesame2::RepositoryWrapper* Soprano::Sesame2::RepositoryWrapper::create
+ 
+     // put the path into a java.io.File
+     JObjectRef file = JNIWrapper::instance()->constructObject( JAVA_IO_FILE,
+-                                                               "(L"JAVA_LANG_STRING";)V",
++                                                               "(L" JAVA_LANG_STRING ";)V",
+                                                                path.data() );
+     if ( !file ) {
+         return 0;
+@@ -77,7 +77,7 @@ Soprano::Sesame2::RepositoryWrapper* Soprano::Sesame2::RepositoryWrapper::create
+ 
+     // create an instance of org.openrdf.sail.nativerdf.NativeStore;
+     JObjectRef store = JNIWrapper::instance()->constructObject( ORG_OPENRDF_SAIL_NATIVERDF_NATIVESTORE,
+-                                                                "(L"JAVA_IO_FILE";L"JAVA_LANG_STRING";)V",
++                                                                "(L" JAVA_IO_FILE ";L" JAVA_LANG_STRING ";)V",
+                                                                 file.data(),
+                                                                 tripleIndexes.data() );
+     if ( !store ) {
+@@ -86,7 +86,7 @@ Soprano::Sesame2::RepositoryWrapper* Soprano::Sesame2::RepositoryWrapper::create
+ 
+     // create an instance of org.openrdf.repository.sail.SailRepository
+     JObjectRef repository = JNIWrapper::instance()->constructObject( ORG_OPENRDF_REPOSITORY_SAIL_SAILREPOSITORY,
+-                                                                     "(L"ORG_OPENRDF_SAIL_SAIL";)V",
++                                                                     "(L" ORG_OPENRDF_SAIL_SAIL ";)V",
+                                                                      store.data() );
+     if ( !repository ) {
+         return 0;
+@@ -106,7 +106,7 @@ Soprano::Sesame2::RepositoryWrapper* Soprano::Sesame2::RepositoryWrapper::create
+ 
+     // create an instance of org.openrdf.repository.sail.SailRepository
+     JObjectRef repository = JNIWrapper::instance()->constructObject( ORG_OPENRDF_REPOSITORY_SAIL_SAILREPOSITORY,
+-                                                                     "(L"ORG_OPENRDF_SAIL_SAIL";)V",
++                                                                     "(L" ORG_OPENRDF_SAIL_SAIL ";)V",
+                                                                      store.data() );
+     if ( !repository ) {
+         return 0;
+@@ -154,7 +154,7 @@ bool Soprano::Sesame2::RepositoryWrapper::initialize()
+ Soprano::Sesame2::ValueFactory* Soprano::Sesame2::RepositoryWrapper::valueFactory()
+ {
+     if ( !d->valueFactory ) {
+-        JObjectRef valueFactory = callObjectMethod( getMethodID( "getValueFactory", "()L"ORG_OPENRDF_MODEL_VALUEFACTORY";" ) );
++        JObjectRef valueFactory = callObjectMethod( getMethodID( "getValueFactory", "()L" ORG_OPENRDF_MODEL_VALUEFACTORY ";" ) );
+         if ( !valueFactory ) {
+             JNIWrapper::instance()->debugException();
+             return 0;
+@@ -169,7 +169,7 @@ Soprano::Sesame2::ValueFactory* Soprano::Sesame2::RepositoryWrapper::valueFactor
+ Soprano::Sesame2::RepositoryConnection* Soprano::Sesame2::RepositoryWrapper::repositoryConnection()
+ {
+     if ( !d->repositoryConnection ) {
+-        JObjectRef repositoryConnection = callObjectMethod( getMethodID( "getConnection", "()L"ORG_OPENRDF_REPOSITORY_SAIL_SAILREPOSITORYCONNECTION";" ) );
++        JObjectRef repositoryConnection = callObjectMethod( getMethodID( "getConnection", "()L" ORG_OPENRDF_REPOSITORY_SAIL_SAILREPOSITORYCONNECTION ";" ) );
+         if ( !repositoryConnection ) {
+             JNIWrapper::instance()->debugException();
+             return 0;
+diff --git backends/sesame2/sesame2repositoryconnection.cpp backends/sesame2/sesame2repositoryconnection.cpp
+index 47e14d9..41a6ed7 100644
+--- backends/sesame2/sesame2repositoryconnection.cpp
++++ backends/sesame2/sesame2repositoryconnection.cpp
+@@ -45,7 +45,7 @@ public:
+ 
+     jmethodID IDgetContextIDs() {
+         if ( !m_IDgetContextIDs ) {
+-            m_IDgetContextIDs = m_parent->getMethodID( "getContextIDs", "()L"ORG_OPENRDF_REPOSITORY_REPOSITORYRESULT";" );
++            m_IDgetContextIDs = m_parent->getMethodID( "getContextIDs", "()L" ORG_OPENRDF_REPOSITORY_REPOSITORYRESULT ";" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDgetContextIDs;
+@@ -53,7 +53,7 @@ public:
+ 
+     jmethodID IDaddStatement() {
+         if ( !m_IDaddStatement ) {
+-            m_IDaddStatement = m_parent->getMethodID( "add", "(L"ORG_OPENRDF_MODEL_STATEMENT";[L"ORG_OPENRDF_MODEL_RESOURCE";)V" );
++            m_IDaddStatement = m_parent->getMethodID( "add", "(L" ORG_OPENRDF_MODEL_STATEMENT ";[L" ORG_OPENRDF_MODEL_RESOURCE ";)V" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDaddStatement;
+@@ -61,7 +61,7 @@ public:
+ 
+     jmethodID IDgetStatements() {
+         if ( !m_IDgetStatements ) {
+-            m_IDgetStatements = m_parent->getMethodID( "getStatements", "(L"ORG_OPENRDF_MODEL_RESOURCE";L"ORG_OPENRDF_MODEL_URI";L"ORG_OPENRDF_MODEL_VALUE";Z[L"ORG_OPENRDF_MODEL_RESOURCE";)L"ORG_OPENRDF_REPOSITORY_REPOSITORYRESULT";" );
++            m_IDgetStatements = m_parent->getMethodID( "getStatements", "(L" ORG_OPENRDF_MODEL_RESOURCE ";L" ORG_OPENRDF_MODEL_URI";L" ORG_OPENRDF_MODEL_VALUE";Z[L" ORG_OPENRDF_MODEL_RESOURCE";)L" ORG_OPENRDF_REPOSITORY_REPOSITORYRESULT";" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDgetStatements;
+@@ -69,7 +69,7 @@ public:
+ 
+     jmethodID IDhasStatement() {
+         if ( !m_IDhasStatement ) {
+-            m_IDhasStatement = m_parent->getMethodID( "hasStatement", "(L"ORG_OPENRDF_MODEL_RESOURCE";L"ORG_OPENRDF_MODEL_URI";L"ORG_OPENRDF_MODEL_VALUE";Z[L"ORG_OPENRDF_MODEL_RESOURCE";)Z" );
++            m_IDhasStatement = m_parent->getMethodID( "hasStatement", "(L" ORG_OPENRDF_MODEL_RESOURCE ";L " ORG_OPENRDF_MODEL_URI "; L" ORG_OPENRDF_MODEL_VALUE ";Z [L " ORG_OPENRDF_MODEL_RESOURCE ";)Z" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDhasStatement;
+@@ -77,7 +77,7 @@ public:
+ 
+     jmethodID IDremove() {
+         if ( !m_IDremove ) {
+-            m_IDremove = m_parent->getMethodID( "remove", "(L"ORG_OPENRDF_MODEL_RESOURCE";L"ORG_OPENRDF_MODEL_URI";L"ORG_OPENRDF_MODEL_VALUE";[L"ORG_OPENRDF_MODEL_RESOURCE";)V" );
++            m_IDremove = m_parent->getMethodID( "remove", "(L" ORG_OPENRDF_MODEL_RESOURCE ";L" ORG_OPENRDF_MODEL_URI ";L" ORG_OPENRDF_MODEL_VALUE ";[L" ORG_OPENRDF_MODEL_RESOURCE ";)V" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDremove;
+@@ -85,7 +85,7 @@ public:
+ 
+     jmethodID IDremoveStatement() {
+         if ( !m_IDremoveStatement ) {
+-            m_IDremoveStatement = m_parent->getMethodID( "remove", "(L"ORG_OPENRDF_MODEL_STATEMENT";[L"ORG_OPENRDF_MODEL_RESOURCE";)V" );
++            m_IDremoveStatement = m_parent->getMethodID( "remove", "(L" ORG_OPENRDF_MODEL_STATEMENT ";[L" ORG_OPENRDF_MODEL_RESOURCE ";)V" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDremoveStatement;
+@@ -93,7 +93,7 @@ public:
+ 
+     jmethodID IDsize() {
+         if ( !m_IDsize ) {
+-            m_IDsize = m_parent->getMethodID( "size", "([L"ORG_OPENRDF_MODEL_RESOURCE";)J" );
++            m_IDsize = m_parent->getMethodID( "size", "([L" ORG_OPENRDF_MODEL_RESOURCE ";)J" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDsize;
+@@ -109,7 +109,7 @@ public:
+ 
+     jmethodID IDprepareQuery() {
+         if ( !m_IDprepareQuery ) {
+-            m_IDprepareQuery = m_parent->getMethodID( "prepareQuery", "(L"ORG_OPENRDF_QUERY_QUERYLANGUAGE";L"JAVA_LANG_STRING";)L"ORG_OPENRDF_QUERY_QUERY";" );
++            m_IDprepareQuery = m_parent->getMethodID( "prepareQuery", "(L" ORG_OPENRDF_QUERY_QUERYLANGUAGE ";L" JAVA_LANG_STRING ";)L" ORG_OPENRDF_QUERY_QUERY ";" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDprepareQuery;
+diff --git backends/sesame2/sesame2sopranowrapper.cpp backends/sesame2/sesame2sopranowrapper.cpp
+index e3168ba..706ea2b 100644
+--- backends/sesame2/sesame2sopranowrapper.cpp
++++ backends/sesame2/sesame2sopranowrapper.cpp
+@@ -35,7 +35,7 @@ public:
+     jmethodID IDremoveFromDefaultContext() {
+         if ( !m_IDremoveFromDefaultContext ) {
+             m_IDremoveFromDefaultContext = m_parent->getMethodID( "removeFromDefaultContext",
+-                                                                  "(L"ORG_OPENRDF_MODEL_RESOURCE";L"ORG_OPENRDF_MODEL_URI";L"ORG_OPENRDF_MODEL_VALUE";)V" );
++                                                                  "(L" ORG_OPENRDF_MODEL_RESOURCE ";L" ORG_OPENRDF_MODEL_URI ";L" ORG_OPENRDF_MODEL_VALUE ";)V" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDremoveFromDefaultContext;
+diff --git backends/sesame2/sesame2utils.cpp backends/sesame2/sesame2utils.cpp
+index 61d2184..d6d88e4 100644
+--- backends/sesame2/sesame2utils.cpp
++++ backends/sesame2/sesame2utils.cpp
+@@ -33,7 +33,7 @@
+ QUrl Soprano::Sesame2::convertURI( const JObjectRef& uri )
+ {
+     JNIObjectWrapper uriWrapper( uri );
+-    JStringRef uriString = uriWrapper.callObjectMethod( uriWrapper.getMethodID( "toString", "()L"JAVA_LANG_STRING";" ) );
++    JStringRef uriString = uriWrapper.callObjectMethod( uriWrapper.getMethodID( "toString", "()L" JAVA_LANG_STRING ";" ) );
+     return QUrl::fromEncoded( uriString.toAscii() );
+ }
+ 
+@@ -54,13 +54,13 @@ Soprano::Node Soprano::Sesame2::convertNode( const JObjectRef& resource )
+         return convertURI( resource );
+     }
+     else if ( JNIWrapper::instance()->env()->IsInstanceOf( resource, classBNode ) ) {
+-        JStringRef uri = resourceWrapper.callObjectMethod( resourceWrapper.getMethodID( "getID", "()L"JAVA_LANG_STRING";" ) );
++        JStringRef uri = resourceWrapper.callObjectMethod( resourceWrapper.getMethodID( "getID", "()L" JAVA_LANG_STRING ";" ) );
+         return Node( uri.toQString() );
+     }
+     else if ( JNIWrapper::instance()->env()->IsInstanceOf( resource, classLiteral ) ) {
+-        JStringRef value = resourceWrapper.callObjectMethod( resourceWrapper.getMethodID( "getLabel", "()L"JAVA_LANG_STRING";" ) );
+-        JStringRef lang = resourceWrapper.callObjectMethod( resourceWrapper.getMethodID( "getLanguage", "()L"JAVA_LANG_STRING";" ) );
+-        JObjectRef dataType = resourceWrapper.callObjectMethod( resourceWrapper.getMethodID( "getDatatype", "()L"ORG_OPENRDF_MODEL_URI";" ) );
++        JStringRef value = resourceWrapper.callObjectMethod( resourceWrapper.getMethodID( "getLabel", "()L" JAVA_LANG_STRING ";" ) );
++        JStringRef lang = resourceWrapper.callObjectMethod( resourceWrapper.getMethodID( "getLanguage", "()L" JAVA_LANG_STRING ";" ) );
++        JObjectRef dataType = resourceWrapper.callObjectMethod( resourceWrapper.getMethodID( "getDatatype", "()L" ORG_OPENRDF_MODEL_URI ";" ) );
+ 
+         if ( dataType ) {
+             return Node( LiteralValue::fromString( value.toQString(), convertURI( dataType ) ) );
+@@ -80,10 +80,10 @@ Soprano::Statement Soprano::Sesame2::convertStatement( const JObjectRef& o )
+ {
+     JNIObjectWrapper statementWrapper( o );
+ 
+-    JObjectRef subject = statementWrapper.callObjectMethod( statementWrapper.getMethodID( "getSubject", "()L"ORG_OPENRDF_MODEL_RESOURCE";" ) );
+-    JObjectRef predicate = statementWrapper.callObjectMethod( statementWrapper.getMethodID( "getPredicate", "()L"ORG_OPENRDF_MODEL_URI";" ) );
+-    JObjectRef object = statementWrapper.callObjectMethod( statementWrapper.getMethodID( "getObject", "()L"ORG_OPENRDF_MODEL_VALUE";" ) );
+-    JObjectRef context = statementWrapper.callObjectMethod( statementWrapper.getMethodID( "getContext", "()L"ORG_OPENRDF_MODEL_RESOURCE";" ) );
++    JObjectRef subject = statementWrapper.callObjectMethod( statementWrapper.getMethodID( "getSubject", "()L" ORG_OPENRDF_MODEL_RESOURCE ";" ) );
++    JObjectRef predicate = statementWrapper.callObjectMethod( statementWrapper.getMethodID( "getPredicate", "()L" ORG_OPENRDF_MODEL_URI ";" ) );
++    JObjectRef object = statementWrapper.callObjectMethod( statementWrapper.getMethodID( "getObject", "()L" ORG_OPENRDF_MODEL_VALUE ";" ) );
++    JObjectRef context = statementWrapper.callObjectMethod( statementWrapper.getMethodID( "getContext", "()L" ORG_OPENRDF_MODEL_RESOURCE ";" ) );
+ 
+     return Statement( convertNode( subject ),
+                       convertNode( predicate ),
+diff --git backends/sesame2/sesame2valuefactory.cpp backends/sesame2/sesame2valuefactory.cpp
+index 45e6988..6f47cb4 100644
+--- backends/sesame2/sesame2valuefactory.cpp
++++ backends/sesame2/sesame2valuefactory.cpp
+@@ -47,7 +47,7 @@ public:
+     jmethodID IDcreateURI() {
+         if ( !m_IDcreateURI ) {
+             m_IDcreateURI = m_parent->getMethodID( "createURI",
+-                                                   "(L"JAVA_LANG_STRING";)L"ORG_OPENRDF_MODEL_URI";" );
++                                                   "(L" JAVA_LANG_STRING ";)L" ORG_OPENRDF_MODEL_URI ";" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDcreateURI;
+@@ -56,7 +56,7 @@ public:
+     jmethodID IDcreateBNode() {
+         if ( !m_IDcreateBNode ) {
+             m_IDcreateBNode = m_parent->getMethodID( "createBNode",
+-                                                     "()L"ORG_OPENRDF_MODEL_BNODE";" );
++                                                     "()L" ORG_OPENRDF_MODEL_BNODE ";" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDcreateBNode;
+@@ -65,7 +65,7 @@ public:
+     jmethodID IDcreateBNodeFromString() {
+         if ( !m_IDcreateBNodeFromString ) {
+             m_IDcreateBNodeFromString = m_parent->getMethodID( "createBNode",
+-                                                               "(L"JAVA_LANG_STRING";)L"ORG_OPENRDF_MODEL_BNODE";" );
++                                                               "(L" JAVA_LANG_STRING ";)L" ORG_OPENRDF_MODEL_BNODE ";" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDcreateBNodeFromString;
+@@ -74,7 +74,7 @@ public:
+     jmethodID IDcreateLiteralWithLang() {
+         if ( !m_IDcreateLiteralWithLang ) {
+             m_IDcreateLiteralWithLang = m_parent->getMethodID( "createLiteral",
+-                                                               "(L"JAVA_LANG_STRING";L"JAVA_LANG_STRING";)L"ORG_OPENRDF_MODEL_LITERAL";" );
++                                                               "(L" JAVA_LANG_STRING ";L" JAVA_LANG_STRING ";)L" ORG_OPENRDF_MODEL_LITERAL ";" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDcreateLiteralWithLang;
+@@ -83,7 +83,7 @@ public:
+     jmethodID IDcreateLiteralWithDataType() {
+         if ( !m_IDcreateLiteralWithDataType ) {
+             m_IDcreateLiteralWithDataType = m_parent->getMethodID( "createLiteral",
+-                                                                   "(L"JAVA_LANG_STRING";L"ORG_OPENRDF_MODEL_URI";)L"ORG_OPENRDF_MODEL_LITERAL";" );
++                                                                   "(L" JAVA_LANG_STRING ";L" ORG_OPENRDF_MODEL_URI ";)L" ORG_OPENRDF_MODEL_LITERAL ";" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDcreateLiteralWithDataType;
+@@ -92,7 +92,7 @@ public:
+     jmethodID IDcreateStatement() {
+         if ( !m_IDcreateStatement ) {
+             m_IDcreateStatement = m_parent->getMethodID( "createStatement",
+-                                                         "(L"ORG_OPENRDF_MODEL_RESOURCE";L"ORG_OPENRDF_MODEL_URI";L"ORG_OPENRDF_MODEL_VALUE";)L"ORG_OPENRDF_MODEL_STATEMENT";" );
++                                                         "(L" ORG_OPENRDF_MODEL_RESOURCE ";L" ORG_OPENRDF_MODEL_URI ";L" ORG_OPENRDF_MODEL_VALUE ";)L" ORG_OPENRDF_MODEL_STATEMENT ";" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDcreateStatement;
+@@ -101,7 +101,7 @@ public:
+     jmethodID IDcreateStatementWithContext() {
+         if ( !m_IDcreateStatementWithContext ) {
+             m_IDcreateStatementWithContext = m_parent->getMethodID( "createStatement",
+-                                                                    "(L"ORG_OPENRDF_MODEL_RESOURCE";L"ORG_OPENRDF_MODEL_URI";L"ORG_OPENRDF_MODEL_VALUE";L"ORG_OPENRDF_MODEL_RESOURCE";)L"ORG_OPENRDF_MODEL_STATEMENT";" );
++                                                                    "(L" ORG_OPENRDF_MODEL_RESOURCE ";L" ORG_OPENRDF_MODEL_URI ";L" ORG_OPENRDF_MODEL_VALUE ";L" ORG_OPENRDF_MODEL_RESOURCE ";)L" ORG_OPENRDF_MODEL_STATEMENT ";" );
+             JNIWrapper::instance()->debugException();
+         }
+         return m_IDcreateStatementWithContext;
+diff --git soprano/sopranodirs.cpp soprano/sopranodirs.cpp
+index cce9ae6..4518f36 100644
+--- soprano/sopranodirs.cpp
++++ soprano/sopranodirs.cpp
+@@ -130,8 +130,8 @@ QStringList Soprano::libDirs()
+     paths << getWinPrefix() + QLatin1String( "/bin" );
+     paths << getWinPrefix() + QLatin1String( SOPRANO_FULL_LIB_DIR );
+ #else
+-    paths << QLatin1String( "/usr/"SOPRANO_LIB_DIR );
+-    paths << QLatin1String( "/usr/local/"SOPRANO_LIB_DIR );
++    paths << QLatin1String( "/usr/" SOPRANO_LIB_DIR );
++    paths << QLatin1String( "/usr/local/" SOPRANO_LIB_DIR );
+     paths += Soprano::envDirList( "LD_LIBRARY_PATH" );
+ #endif
+     return paths;
+-- 
+2.10.2
+

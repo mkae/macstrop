@@ -9,10 +9,14 @@ set kf5.virtualPath scratch
 set kf5.category    integration
 PortGroup           kf5 1.1
 
+# in case of unexpected behaviour, set QT_DEBUG_PLUGINS=1
+# cf. http://doc.qt.io/qt-5/deployment-plugins.html#debugging-plugins
+
 description         OS X platform theme plugin
 long_description    This port contains an OS X adaptation of KDE's platform theme plugin \
-                    which allows Qt5/KF5 applications to customise their interface (widget \
-                    style, fonts, colours & icons).
+                    which brings the KDE theme extensions to Qt5/KF5 applications on Mac. \
+                    This allows them customise their interface (widget \
+                    style, fonts, colours & icons) almost just like they can on Linux/KDE desktop.
 maintainers         gmail.com:rjvbertin mk openmaintainer
 homepage            https://cgit.kde.org/scratch/rjvbb/osx-integration.git/
 
@@ -20,12 +24,23 @@ installs_libs       no
 
 subport ${name}-devel {}
 
+if {[variant_isset replace_cocoa]} {
+    long_description-append \n \
+                    With the +replace_cocoa variant, the platform theme plugin will be called \"cocoa\" \
+                    and will thus load automatically instead of the regular native platform theme. This \
+                    has the effect of adding the KDE theme extensions to the native theme without having\
+                    to take any action to load it. The drawback is this can be undone only by uninstalling \
+                    or deactivating ${subport} (instead of setting KDE_SESSION_VERSION to a value < 4).
+}
+
 if {${subport} eq "${name}-devel"} {
     conflicts       ${name}
     fetch.type      git
     git.url         git://anongit.kde.org/scratch/rjvbb/osx-integration
-    git.branch      d8708426aafe73398f9f79943dd12e6e0320692f
-    version         5.26.0.5
+    git.branch      b6241bdc77f8021f451a036fde59a9857fdf6c80
+    version         5.30.0.4
+    worksrcdir      ${name}-5
+    distname        ${name}-5
 } else {
     version         0
     conflicts       ${name}-devel
@@ -39,37 +54,50 @@ if {${subport} eq "${name}-devel"} {
         return -code error "This port doesn't have a release version (yet)."
     }
 }
-worksrcdir          ${name}-5
-distname            ${name}-5
 
 kf5.depends_frameworks \
                     kconfig kconfigwidgets ki18n kiconthemes \
                     kio knotifications kwidgetsaddons
 
 configure.args-append \
-                    -DDEFINE_ICONTHEME_SETTINGS=ON
+                    -DDEFINE_ICONTHEME_SETTINGS=ON \
+                    -DPREFER_NATIVE_DIALOGS=ON \
+                    -DOVERRIDE_NATIVE_THEME=OFF \
+                    -DEMULATE_MENU_KEY=OFF
 
-pre-activate {
-    # deactivate kf5-frameworkintegration <= 5.20.0
-    # adapted from the Portfile Recipes
-    if {![catch {set installed [lindex [registry_active kf5-frameworkintegration] 0]}]} {
-        set _version [lindex $installed 1]
-        if {[vercmp $_version 5.21.0] < 0} {
-            registry_deactivate_composite kf5-frameworkintegration "" [list ports_nodepcheck 1]
-        }
-    }
-    if {![catch {set installed [lindex [registry_active kf5-frameworkintegration-devel] 0]}]} {
-        set _version [lindex $installed 1]
-        if {[vercmp $_version 5.21.0] < 0} {
-            registry_deactivate_composite kf5-frameworkintegration-devel "" [list ports_nodepcheck 1]
-        }
-    }
+variant kdedialogs description {prefer KDE over native dialogs} {
+    configure.args-replace \
+                    -DPREFER_NATIVE_DIALOGS=ON \
+                    -DPREFER_NATIVE_DIALOGS=OFF
+    configure.args-append \
+                    -DNEVER_NATIVE_DIALOGS=ON
 }
 
+variant replace_cocoa \
+    description "let the platform plugin replace the native platform theme (see `port info ${subport} +replace_cocoa`)" {
+    configure.args-replace \
+                    -DOVERRIDE_NATIVE_THEME=OFF \
+                    -DOVERRIDE_NATIVE_THEME=ON
+}
+
+variant menukey \
+    description "the platform plugin converts the right Command+Option key combination to a context Menu key" {
+    configure.args-replace \
+                    -DEMULATE_MENU_KEY=OFF \
+                    -DEMULATE_MENU_KEY=ON
+}
+default_variants +menukey
+
 notes-append "Standard KDE fonts are Noto Sans (https://www.google.com/get/noto/) and \
-Oxygen Mono (http://download.kde.org/stable/plasma/5.4.0/oxygen-fonts-5.4.0.tar.xz). \
-Also, in order to use your selected \
+Oxygen Mono (http://download.kde.org/stable/plasma/5.4.0/oxygen-fonts-5.4.0.tar.xz)."
+if {![variant_isset replace_cocoa]} {
+    notes-append \
+"Also, in order to use your selected \
 KDE theme automatically, you need to use port:qt5-kde and set KDE_SESSION_VERSION to a \
 value >=4 (launchctl setenv KDE_SESSION_VERSION 5 and equivalent in your login script).\n\
 What also should work (with any Qt5 version) is to set QT_QPA_PLATFORMTHEME=kde using the same techniques."
-
+}
+notes-append \
+"\nFinally, many KF5 ports install a wrapper script to invoke applications installed into ${kf5.applications_dir}
+easily from in a terminal session. Those scripts can load a file \"~/.kf5.env\" to set up the environment\;
+a sample is provided (${filespath}/.kf5.env)."

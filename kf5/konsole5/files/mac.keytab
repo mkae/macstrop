@@ -17,6 +17,13 @@ keyboard "Default (Mac)"
 #
 # --------------------------------------------------------------
 
+# Working around keyboard issues with Qt5/X11 in Konsole5 on Mac:
+
+key Del+Shift : "\x7f"
+key C+Ctrl : "\x03"
+key Z+Ctrl : "\x1a"
+key V+Ctrl : "\x16"
+
 # common keys
 
 key Escape             : "\E"

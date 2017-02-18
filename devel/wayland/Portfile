@@ -1,0 +1,51 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+# $Id: Portfile 120204 2014-05-19 15:26:03Z nicos@macports.org $
+
+PortSystem          1.0
+
+name                wayland
+version             1.12.0
+categories          devel graphics
+maintainers         gmail.com:rjvbertin
+license             MIT
+description         Wayland client libraries
+long_description    Wayland is intended as a simpler replacement for X \
+                    easier to develop and maintain. GNOME and KDE are expected to be ported to it \
+                    and Qt5 has support for it too.
+homepage            https://wayland.freedesktop.org
+master_sites        https://wayland.freedesktop.org/releases
+use_xz              yes
+platforms           darwin linux
+
+checksums           rmd160  f15bb13c3478e0494463748333e156dcbc764e07 \
+                    sha256  d6b4135cba0188abcb7275513c72dede751d6194f6edc5b82183a3ba8b821ab1
+
+installs_libs       yes
+
+depends_build-append \
+                    port:bison \
+                    port:pkgconfig
+
+depends_lib-append  port:libffi
+
+# configure.cmd       ./autogen.sh
+configure.args-append \
+                    --disable-dependency-tracking \
+                    --disable-x11 \
+                    --without-doxygen \
+                    --disable-docs \
+                    --disable-wayland
+
+variant x11 description {enable support for creating keymaps with the X11 protocol} {
+    depends_lib-append \
+                    port:xorg-libxcb
+    configure.args-replace \
+                    --disable-x11 \
+                    --enable-x11
+}
+
+variant docs description {} {
+    configure.args-replace \
+                    --disable-docs \
+                    --enable-docs
+}
