@@ -41,11 +41,11 @@ if {${subport} eq "${name}-devel"} {
     } else {
         git.url     git://anongit.kde.org/purpose
     }
-# #     v1.1.0-10-g3b55838
-#     git.branch      3b558384a367ad1a9005ae00a9b53f1a922520fc
-#     v1.1.0-12-gb7dd054
-    git.branch      b7dd054b4b72bbe687f236745b0b05c449527381
-    version         1.1.0.12
+# #     v1.1.0-16-g67809e2
+#     git.branch      67809e220b47bae81e726d170fd5beb1b41dbeb5
+#     v1.1.0-62-g71a677d
+    git.branch      71a677da62954efa32fe1d826c26a937b3129e0c
+    version         1.1.0.62
     epoch           160719
 } else {
     version         0
@@ -67,7 +67,8 @@ distname            ${name}-5
 patch.pre_args      -Np1
 
 patchfiles-append   patch-plugins-CMakeLists.diff \
-                    patch-qmlplugindump-location.diff
+                    patch-qmlplugindump-location.diff \
+                    patch-cast-to-double.diff
 
 post-patch {
     reinplace "s|@QTBINDIR@|${qt_bins_dir}|g" ${worksrcpath}/src/plugins/cmake/FindQMLModule.cmake.in

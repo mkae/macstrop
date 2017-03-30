@@ -78,6 +78,16 @@ pre-configure {
         }
     }
 
+    if { [vercmp ${xcodeversion} "7.0"] >= 0 } {
+        # starting with Xcode 7.0, the SDK for build OS version might not be available
+        # see https://trac.macports.org/ticket/53597
+
+        set sdks_dir ${developer_dir}/Platforms/MacOSX.platform/Developer/SDKs
+        if { ![file exists ${sdks_dir}/MacOSX${configure.sdk_version}.sdk] } {
+            configure.sdk_version
+        }
+    }
+
     # set QT and QMAKE values in a cache file
     # previously, they were set using configure.args
     # a cache file is used for two reasons
@@ -107,6 +117,10 @@ pre-configure {
     if { ${configure.compiler} ne "clang" } {
         puts ${cache} "QMAKE_CC=${configure.cc}"
         puts ${cache} "QMAKE_CXX=${configure.cxx}"
+        puts ${cache} "QMAKE_LINK_C=${configure.cc}"
+        puts ${cache} "QMAKE_LINK_C_SHLIB=${configure.cc}"
+        puts ${cache} "QMAKE_LINK=${configure.cxx}"
+        puts ${cache} "QMAKE_LINK_SHLIB=${configure.cxx}"
     }
 
     set qt_version [exec ${prefix}/bin/pkg-config --modversion Qt5Core]

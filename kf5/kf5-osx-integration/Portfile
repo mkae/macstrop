@@ -16,7 +16,9 @@ description         OS X platform theme plugin
 long_description    This port contains an OS X adaptation of KDE's platform theme plugin \
                     which brings the KDE theme extensions to Qt5/KF5 applications on Mac. \
                     This allows them customise their interface (widget \
-                    style, fonts, colours & icons) almost just like they can on Linux/KDE desktop.
+                    style, fonts, colours & icons) almost just like they can on Linux/KDE desktop. \
+                    The plugin also provides click-and-hold support (opens the contextmenu for \
+                    select Qt widgets) and optional emulation of a Menu key.
 maintainers         gmail.com:rjvbertin mk openmaintainer
 homepage            https://cgit.kde.org/scratch/rjvbb/osx-integration.git/
 
@@ -37,8 +39,8 @@ if {${subport} eq "${name}-devel"} {
     conflicts       ${name}
     fetch.type      git
     git.url         git://anongit.kde.org/scratch/rjvbb/osx-integration
-    git.branch      b6241bdc77f8021f451a036fde59a9857fdf6c80
-    version         5.30.0.4
+    git.branch      628c36e67f3834dfda1f6dc2ed8b977ce3b2f452
+    version         5.30.0.17
     worksrcdir      ${name}-5
     distname        ${name}-5
 } else {

@@ -23,6 +23,7 @@ use_configure       no
 subport ${name}3 {}
 
 if {${subport} eq "${name}"} {
+    PortGroup           qt4 1.0
     conflicts           ${name}3
     fetch.type          bzr
     bzr.url             lp:qarte
@@ -33,6 +34,8 @@ if {${subport} eq "${name}"} {
     categories          python kde kde4
 
     depends_run-append  port:python27 port:py27-pykde4 port:rtmpdump
+    set PYTHON_VERSION  27
+    set PYTHON_BRANCH   2.7
 
     variant notify description {Runtime support for desktop notifications} {
         # specify py27-pygtk as an explicit dependency so interested users
@@ -67,36 +70,41 @@ if {${subport} eq "${name}"} {
     livecheck.regex     >(\\d+)<
     livecheck.url       https://code.launchpad.net/~vincent-vandevyvre/qarte/trunk
 } else {
+    PortGroup           qt5 1.0
     conflicts           ${name}
-#     fetch.type          bzr
-#     bzr.url             lp:qarte/qarte-3
-#     bzr.revision        156
 
-    version             3.5.0
+    version             3.6.1
     master_sites        http://ppa.launchpad.net/vincent-vandevyvre/vvv/ubuntu/pool/main/q/qarte/
     distname            ${name}_${version}
     extract.suffix      .orig.tar.gz
-    checksums           rmd160  04398242cdac6e49b45c24cefa7cd0e309192a28 \
-                        sha256  8485cd0889379edcbc8bac395caa515f421cb045176c60bbf6ca345905a79203
+    checksums           rmd160  98afb9b289d428d7f2df187f791c6d89a05fd39d \
+                        sha256  c6f8e565e6d5e42fa4ad0e5636974c856cac0dbad3e6b0a100c5558b83fd23a1
     worksrcdir          ${name}-${version}
 
     categories          python
 
-    variant py34 conflicts py35 description {build for python-3.4} {
+    variant py34 conflicts py35 py36 description {build for python-3.4} {
         depends_run-append \
                         port:python34 port:py34-pyqt5
         post-patch {
             reinplace -W ${build.dir} "s|#\! /usr/bin/python3|#\!${prefix}/bin/python3.4|" qarte
         }
     }
-    variant py35 conflicts py34 description {build for python-3.5} {
+    variant py35 conflicts py34 py36 description {build for python-3.5} {
         depends_run-append \
                         port:python35 port:py35-pyqt5
         post-patch {
             reinplace -W ${build.dir} "s|#\! /usr/bin/python3|#\!${prefix}/bin/python3.5|" qarte
         }
     }
-    if {![variant_isset py34] && ![variant_isset py35]} {
+    variant py36 conflicts py34 py35 description {build for python-3.6} {
+        depends_run-append \
+                        port:python36 port:py36-pyqt5
+        post-patch {
+            reinplace -W ${build.dir} "s|#\! /usr/bin/python3|#\!${prefix}/bin/python3.6|" qarte
+        }
+    }
+    if {![variant_isset py34] && ![variant_isset py35] && ![variant_isset py36]} {
         long_description-append \
                     A Python variant must be specified.
         pre-fetch {
@@ -104,10 +112,20 @@ if {${subport} eq "${name}"} {
             return -code error "Missing Python variant"
         }
     }
+    foreach pdv {3.4 3.5 3.6} {
+        set pv [join [split ${pdv} '.'] ""]
+        if {[variant_isset py${pv}]} {
+            set PYTHON_VERSION ${pv}
+            set PYTHON_BRANCH  ${pdv}
+        }
+    }
 
     patchfiles-append   patch-set-session-version.diff \
                         patch-qarte3-homevincent.diff \
-                        patch-qarte3-unicode_issues.diff
+                        patch-qarte3-unicode_issues-simplified.diff \
+                        patch-qarte3-app-icon.diff \
+                        patch-qarte3-concert-handle-notitle.diff \
+                        patch-qarte3-scan-period.diff
 
     post-patch {
     #     reinplace -W ${build.dir} "s|/usr/bin/qarte|${prefix}/bin/qarte|g" differedTask.py
@@ -160,3 +178,25 @@ if {${subport} eq "${name}"} {
     livecheck.regex     "qarte_(\\d+(?:\\.\\d+)*)\\.orig"
 }
 
+platform darwin {
+    variant app description {create an app bundle} {
+        if {[info exists PYTHON_VERSION]} {
+            # this is always the case when we're building (pre-fetch takes care of that)
+            depends_build-append \
+                        port:py${PYTHON_VERSION}-py2app
+        }
+        post-destroot {
+            file delete -force ${build.dir}/setup.py
+            system -W ${build.dir} "${prefix}/bin/py2applet-${PYTHON_BRANCH} --make-setup -C --optimize \
+                        --use-faulthandler --dist-dir=${destroot}/${qt_apps_dir} --iconfile=${filespath}/qarte.icns"
+            # something must be wrong in my py2applet commandline, fix:
+            reinplace "s|APP = \\\[\\\]|APP = \\\['${prefix}/bin/qarte'\\\]|g" ${build.dir}/setup.py
+            system -W ${build.dir} "${prefix}/bin/python${PYTHON_BRANCH} setup.py py2app -A"
+            xinstall -m 755 -d ${destroot}${qt_apps_dir}
+            file rename ${destroot}${qt_apps_dir}/qarte.app ${destroot}${qt_apps_dir}/Qarte.app
+            reinplace "s|org.pythonmac.unspecified.qarte|org.pythonmac.MacPorts.Qarte|g" \
+                        ${destroot}${qt_apps_dir}/Qarte.app/Contents/Info.plist
+            file delete -force ${build.dir}/build
+        }
+    }
+}

@@ -1,32 +1,18 @@
 diff --git src/kwindowsystem.cpp src/kwindowsystem.cpp
-index 4dfcce8..35eb7b5 100644
+index fda1682..9ccf3a1 100644
 --- src/kwindowsystem.cpp
 +++ src/kwindowsystem.cpp
-@@ -462,6 +462,11 @@ WId KWindowSystem::transientFor(WId win)
- 
- void KWindowSystem::setMainWindow(QWidget *subWidget, WId mainWindowId)
- {
-+#ifdef Q_OS_OSX
-+    if (!QWidget::find(mainWindowId)) {
-+        return;
-+    }
-+#endif
-     // Set the WA_NativeWindow attribute to force the creation of the QWindow.
-     // Without this QWidget::windowHandle() returns 0.
-     subWidget->setAttribute(Qt::WA_NativeWindow, true);
-@@ -720,6 +725,11 @@ static inline KWindowSystem::Platform initPlatform()
+@@ -720,6 +720,9 @@ static inline KWindowSystem::Platform initPlatform()
          return KWindowSystem::Platform::X11;
      }
  #endif
-+#ifdef Q_OS_OSX
 +    if (QGuiApplication::platformName().startsWith(QLatin1String("cocoa"), Qt::CaseInsensitive)) {
 +        return KWindowSystem::Platform::Cocoa;
 +    }
-+#endif
      if (QGuiApplication::platformName().startsWith(QLatin1String("wayland"), Qt::CaseInsensitive)) {
          return KWindowSystem::Platform::Wayland;
      }
-@@ -741,3 +751,8 @@ bool KWindowSystem::isPlatformWayland()
+@@ -741,3 +744,8 @@ bool KWindowSystem::isPlatformWayland()
  {
      return platform() == Platform::Wayland;
  }
@@ -35,6 +21,38 @@ index 4dfcce8..35eb7b5 100644
 +{
 +    return platform() == Platform::Cocoa;
 +}
+diff --git src/kwindowsystem.h src/kwindowsystem.h
+index 27e9e09..7065598 100644
+--- src/kwindowsystem.h
++++ src/kwindowsystem.h
+@@ -596,7 +596,11 @@ public:
+         /**
+          * The Wayland windowing system platform.
+          **/
+-        Wayland
++        Wayland,
++        /**
++         * The Mac's cocoa platform.
++         **/
++        Cocoa
+     };
+     /**
+      * Returns the Platform used by the QGuiApplication.
+@@ -624,6 +628,14 @@ public:
+      **/
+     static bool isPlatformWayland();
+ 
++    /**
++     * Convenience method to check whether the Platform is Cocoa.
++     * @see platform
++     * @see isPlatformX11
++     * @since somewhere after 5.27
++     **/
++    static bool isPlatformCocoa();
++
+ Q_SIGNALS:
+ 
+     /**
 diff --git src/platforms/osx/CMakeLists.txt src/platforms/osx/CMakeLists.txt
 index 4fc3347..b26c1e8 100644
 --- src/platforms/osx/CMakeLists.txt
@@ -93,10 +111,10 @@ index 3ddb921..d916a8a 100644
 -
 diff --git src/platforms/osx/kwindowinfo.mm src/platforms/osx/kwindowinfo.mm
 new file mode 100644
-index 0000000..e6aead8
+index 0000000..eeb1162
 --- /dev/null
 +++ src/platforms/osx/kwindowinfo.mm
-@@ -0,0 +1,420 @@
+@@ -0,0 +1,413 @@
 +/*
 +    This file is part of the KDE libraries
 +    Copyright (C) 2008 Marijn Kruisselbrink (m.kruisselbrink@student.tue.nl)
@@ -129,11 +147,10 @@ index 0000000..e6aead8
 +#import <AppKit/AppKit.h>
 +#include <unistd.h>
 +
-+class KWindowInfoPrivateCocoa::Ext {
++class KWindowInfoPrivateCocoa::Internal {
 +public:
-+    Ext();
-+//     Ext(const Ext &);
-+    ~Ext();
++    Internal();
++    ~Internal();
 +    int ref;
 +    WId win;
 +    bool isLocal;
@@ -159,13 +176,13 @@ index 0000000..e6aead8
 +    AXUIElementRef m_axWin;
 +    QList<KWindowInfoPrivateCocoa *> children;
 +    KWindowInfoPrivateCocoa *parent;
-+private:
-+    void operator=(const Ext &);
++
++    void operator=(const Internal &);
 +    ProcessSerialNumber m_psn;
 +    pid_t m_pid;
 +};
 +
-+KWindowInfoPrivateCocoa::Ext::Ext()
++KWindowInfoPrivateCocoa::Internal::Internal()
 +    : ref(0), win(0), isLocal(false), loadedData(false), m_axWin(0), parent(), m_pid(-1)
 +{
 +    ProcessSerialNumber psn;
@@ -173,34 +190,34 @@ index 0000000..e6aead8
 +    setProcessSerialNumber(psn);
 +}
 +
-+void KWindowInfoPrivateCocoa::Ext::setAxElement(const AXUIElementRef &axWin)
++void KWindowInfoPrivateCocoa::Internal::setAxElement(const AXUIElementRef &axWin)
 +{
 +    m_axWin = axWin;
 +    CFRetain(m_axWin);
 +}
 +
-+void KWindowInfoPrivateCocoa::Ext::setProcessSerialNumber(const ProcessSerialNumber &psn)
++void KWindowInfoPrivateCocoa::Internal::setProcessSerialNumber(const ProcessSerialNumber &psn)
 +{
 +    m_psn = psn;
 +    GetProcessPID(&psn, &m_pid);
 +    updateData();
 +}
 +
-+void KWindowInfoPrivateCocoa::Ext::setProcessID(const pid_t pid)
++void KWindowInfoPrivateCocoa::Internal::setProcessID(const pid_t pid)
 +{
 +    m_psn = {0, kNoProcess};
 +    m_pid = pid;
 +    updateData();
 +}
 +
-+KWindowInfoPrivateCocoa::Ext::~Ext()
++KWindowInfoPrivateCocoa::Internal::~Internal()
 +{
 +    if (m_axWin) {
 +        CFRelease(m_axWin);
 +    }
 +}
 +
-+void KWindowInfoPrivateCocoa::Ext::updateData()
++void KWindowInfoPrivateCocoa::Internal::updateData()
 +{
 +    NSRunningApplication *NSRApp = [NSRunningApplication runningApplicationWithProcessIdentifier:m_pid];
 +
@@ -239,7 +256,7 @@ index 0000000..e6aead8
 +
 +KWindowInfoPrivateCocoa::KWindowInfoPrivateCocoa(WId win, NET::Properties properties, NET::Properties2 properties2)
 +    : KWindowInfoPrivate(win, properties, properties2)
-+    , d(new Ext)
++    , d(new Internal)
 +{
 +    init(win, properties, properties2);
 +}
@@ -247,7 +264,7 @@ index 0000000..e6aead8
 +// this one is only to make QList<> or similar happy
 +KWindowInfoPrivateCocoa::KWindowInfoPrivateCocoa()
 +    : KWindowInfoPrivate(0,0,0)
-+    , d(new Ext)
++    , d(new Internal)
 +{
 +    init(0, 0, 0);
 +}
@@ -369,11 +386,6 @@ index 0000000..e6aead8
 +    return name();
 +}
 +
-+// bool KWindowInfoPrivateCocoa::isOnCurrentDesktop() const
-+// {
-+//     return isOnDesktop(KWindowSystem::currentDesktop());
-+// }
-+
 +bool KWindowInfoPrivateCocoa::isOnDesktop(int) const
 +{
 +    return true;
@@ -432,7 +444,7 @@ index 0000000..e6aead8
 +
 +QByteArray KWindowInfoPrivateCocoa::windowClassName() const
 +{
-+    return QByteArray("Cocoa");
++    return QByteArrayLiteral("Cocoa");
 +}
 +
 +QByteArray KWindowInfoPrivateCocoa::windowRole() const
@@ -442,10 +454,9 @@ index 0000000..e6aead8
 +
 +QByteArray KWindowInfoPrivateCocoa::clientMachine() const
 +{
-+    return QByteArray("localhost");
++    return QByteArrayLiteral("localhost");
 +}
 +
-+// see NETWM spec section 7.6
 +bool KWindowInfoPrivateCocoa::isMinimized() const
 +{
 +    if (d->axElement()) {
@@ -519,7 +530,7 @@ index 0000000..e6aead8
 +}
 diff --git src/platforms/osx/kwindowinfo_p_cocoa.h src/platforms/osx/kwindowinfo_p_cocoa.h
 new file mode 100644
-index 0000000..0560ec4
+index 0000000..b933ddf
 --- /dev/null
 +++ src/platforms/osx/kwindowinfo_p_cocoa.h
 @@ -0,0 +1,92 @@
@@ -609,25 +620,25 @@ index 0000000..0560ec4
 +    void updateData();
 +    QPixmap appIcon() const;
 +private:
-+    class Ext;
-+    Ext *d;
++    class Internal;
++    Internal *d;
 +    void init(WId window, NET::Properties properties, NET::Properties2 properties2);
 +};
 +
 +#endif
 diff --git src/platforms/osx/kwindowsystem.cpp src/platforms/osx/kwindowsystem.cpp
-index 1758829..c571a9c 100644
---- src/platforms/osx/kwindowsystem.cpp
-+++ src/platforms/osx/kwindowsystem.cpp
+index 1758829c17faeddf016a3ddc5852e6f459172d0f..7cc438a25b90141729e68f40186c7b27d1025331 100644
+--- a/src/platforms/osx/kwindowsystem.cpp
++++ b/src/platforms/osx/kwindowsystem.cpp
 @@ -2,6 +2,7 @@
      This file is part of the KDE libraries
      Copyright (C) 2007 Laurent Montel (montel@kde.org)
      Copyright (C) 2008 Marijn Kruisselbrink (m.kruisselbrink@student.tue.nl)
-+    Copyright (C) 2015 René J.V. Bertin (rjvbertin@gmail.com)
++    Copyright (C) 2015-2017 René J.V. Bertin (rjvbertin@gmail.com)
  
      This library is free software; you can redistribute it and/or
      modify it under the terms of the GNU Lesser General Public
-@@ -18,9 +19,12 @@
+@@ -18,9 +19,13 @@
  */
  
  #include "kwindowsystem.h"
@@ -639,10 +650,11 @@ index 1758829..c571a9c 100644
 -#include <kxerrorhandler.h>
 +#include <QGlobalStatic>
 +#include <QObject>
++#include <QMetaMethod>
  #include <QBitmap>
  #include <QDesktopWidget>
  #include <QDialog>
-@@ -28,211 +32,57 @@
+@@ -28,211 +33,57 @@
  
  #include <Carbon/Carbon.h>
  
@@ -654,7 +666,8 @@ index 1758829..c571a9c 100644
 +
  // Uncomment the following line to enable the experimental (and not fully functional) window tracking code. Without this
  // only the processes/applications are tracked, not the individual windows. This currently is quite broken as I can't
- // seem to be able to convince the build system to generate a mov file from both the public header file, and also for this
+-// seem to be able to convince the build system to generate a mov file from both the public header file, and also for this
++// seem to be able to convince the build system to generate a moc file from both the public header file, and also for this
  // private class
  // #define EXPERIMENTAL_WINDOW_TRACKING
  
@@ -665,21 +678,13 @@ index 1758829..c571a9c 100644
 -    }
 -    return a.highLongOfPSN < b.highLongOfPSN;
 -}
-+// static bool operator<(const ProcessSerialNumber &a, const ProcessSerialNumber &b)
-+// {
-+//     if (a.lowLongOfPSN != b.lowLongOfPSN) {
-+//         return a.lowLongOfPSN < b.lowLongOfPSN;
-+//     }
-+//     return a.highLongOfPSN < b.highLongOfPSN;
-+// }
- 
+-
 -class KWindowSystemPrivate : QObject
-+class KWSPrivateCocoaInternalContainer
- {
+-{
 -#ifdef EXPERIMENTAL_WINDOW_TRACKING
 -    Q_OBJECT
 -#endif
- public:
+-public:
 -    KWindowSystemPrivate();
 -
 -    QMap<WId, KWindowInfo> windows;
@@ -718,8 +723,9 @@ index 1758829..c571a9c 100644
 -};
 -
 -class KWindowSystemStaticContainer
--{
--public:
++class KWSPrivateCocoaInternalContainer
+ {
+ public:
 -    KWindowSystemStaticContainer() : d(new KWindowSystemPrivate) { }
 -    KWindowSystem kwm;
 -    KWindowSystemPrivate *d;
@@ -729,9 +735,12 @@ index 1758829..c571a9c 100644
  };
  
 -KWINDOWSYSTEM_GLOBAL_STATIC(KWindowSystemStaticContainer, g_kwmInstanceContainer)
--
++Q_GLOBAL_STATIC(KWSPrivateCocoaInternalContainer, g_kwmInstanceContainer)
+ 
 -static OSStatus applicationEventHandler(EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
--{
++#ifdef EXPERIMENTAL_WINDOW_TRACKING
++static bool operator<(const ProcessSerialNumber &a, const ProcessSerialNumber &b)
+ {
 -    KWindowSystemPrivate *d = (KWindowSystemPrivate *) inUserData;
 -
 -    UInt32 kind;
@@ -747,13 +756,15 @@ index 1758829..c571a9c 100644
 -        d->applicationLaunched(psn);
 -    } else if (kind == kEventAppTerminated) {
 -        d->applicationTerminated(psn);
--    }
++    if (a.lowLongOfPSN != b.lowLongOfPSN) {
++        return a.lowLongOfPSN < b.lowLongOfPSN;
+     }
 -
 -    return noErr;
--}
-+Q_GLOBAL_STATIC(KWSPrivateCocoaInternalContainer, g_kwmInstanceContainer)
++    return a.highLongOfPSN < b.highLongOfPSN;
+ }
  
- #ifdef EXPERIMENTAL_WINDOW_TRACKING
+-#ifdef EXPERIMENTAL_WINDOW_TRACKING
  static void windowClosedObserver(AXObserverRef observer, AXUIElementRef element, CFStringRef notification, void *refcon)
  {
 -    KWindowSystemPrivate::self()->windowClosed(element, refcon);
@@ -763,10 +774,9 @@ index 1758829..c571a9c 100644
  static void newWindowObserver(AXObserverRef observer, AXUIElementRef element, CFStringRef notification, void *refcon)
  {
 -    KWindowSystemPrivate::self()->newWindow(element, refcon);
-+    KWSPrivateCocoaInternal::self()->newWindow(element, refcon);
- }
- #endif
- 
+-}
+-#endif
+-
 -KWindowSystemPrivate::KWindowSystemPrivate()
 -    : QObject(0), m_noEmit(true), waitingForTimer(false)
 -{
@@ -793,7 +803,8 @@ index 1758829..c571a9c 100644
 -#else
 -#warning port me to Mac64
 -#endif
--}
++    KWSPrivateCocoaInternal::self()->newWindow(element, refcon);
+ }
 -
 -void KWindowSystemPrivate::applicationLaunched(const ProcessSerialNumber &psn)
 -{
@@ -859,9 +870,9 @@ index 1758829..c571a9c 100644
 -#endif
 -#else
 -#warning Port me to Mac64
--#endif
+ #endif
 -}
--
+ 
  #ifdef EXPERIMENTAL_WINDOW_TRACKING
 -void KWindowSystemPrivate::tryRegisterProcess()
 +void KWSPrivateCocoaInternal::tryRegisterProcess()
@@ -879,7 +890,7 @@ index 1758829..c571a9c 100644
  
          // create an observer and listen for new window events
          AXObserverRef observer;
-@@ -258,15 +108,17 @@ void KWindowSystemPrivate::tryRegisterProcess()
+@@ -258,15 +109,17 @@ void KWindowSystemPrivate::tryRegisterProcess()
  }
  #endif
  
@@ -903,7 +914,7 @@ index 1758829..c571a9c 100644
          }
          winids.removeAll(id);
          emit KWindowSystem::self()->windowRemoved(winfo.win());
-@@ -274,29 +126,29 @@ void KWindowSystemPrivate::applicationTerminated(const ProcessSerialNumber &psn)
+@@ -274,29 +127,29 @@ void KWindowSystemPrivate::applicationTerminated(const ProcessSerialNumber &psn)
  }
  
  #ifdef EXPERIMENTAL_WINDOW_TRACKING
@@ -941,7 +952,7 @@ index 1758829..c571a9c 100644
      // listen for closed events for this window
      if (AXObserverAddNotification(observer, win, kAXUIElementDestroyedNotification, win2.d) != noErr) {
          // when we can't receive close events, the window should not be added
-@@ -305,185 +157,177 @@ void KWindowSystemPrivate::newWindow(AXUIElementRef win, void *refcon)
+@@ -305,185 +158,177 @@ void KWindowSystemPrivate::newWindow(AXUIElementRef win, void *refcon)
      }
  
      windows[win2.win()] = win2;
@@ -1214,7 +1225,7 @@ index 1758829..c571a9c 100644
  {
  #ifdef Q_OS_MAC32
      // not supported for 'global' windows; only for windows in the current process
-@@ -514,128 +358,225 @@ void KWindowSystem::setType(WId winid, NET::WindowType windowType)
+@@ -514,128 +359,236 @@ void KWindowSystem::setType(WId winid, NET::WindowType windowType)
          ChangeWindowAttributes(win, kWindowNoTitleBarAttribute, kWindowNoAttributes);
      }
  #else
@@ -1422,9 +1433,21 @@ index 1758829..c571a9c 100644
 +void KWindowSystemPrivateCocoa::connectNotify(const QMetaMethod &signal)
  {
 -    qDebug() << "connectNotify( const char* signal )  isn't yet implemented!";
-+    Q_UNUSED(signal);
-+    qDebug() << "connectNotify( const QMetaMethod &signal )  isn't yet implemented!";
-     //TODO
+-    //TODO
++    // for now we just store what kind of information someone might be interested in.
++    if (signal == QMetaMethod::fromSignal(&KWindowSystem::workAreaChanged)) {
++        m_requestedInfo = INFO_WINDOWS;
++    } else if (signal == QMetaMethod::fromSignal(&KWindowSystem::strutChanged)) {
++        m_requestedInfo = INFO_WINDOWS;
++    } else if (signal == QMetaMethod::fromSignal(static_cast<void(KWindowSystem::*)(WId, const ulong *)>(&KWindowSystem::windowChanged))) {
++        m_requestedInfo = INFO_WINDOWS;
++    } else if (signal == QMetaMethod::fromSignal(static_cast<void(KWindowSystem::*)(WId, uint)>(&KWindowSystem::windowChanged))) {
++        m_requestedInfo = INFO_WINDOWS;
++    } else if (signal == QMetaMethod::fromSignal(static_cast<void(KWindowSystem::*)(WId)>(&KWindowSystem::windowChanged))) {
++        m_requestedInfo = INFO_WINDOWS;
++    } else {
++        m_requestedInfo = INFO_BASIC;
++    }
  }
  
 -void KWindowSystem::allowExternalProcessWindowActivation(int pid)
@@ -1553,10 +1576,10 @@ index 0000000..241a1d1
 +#endif // !KWINDOWSYSTEM_MAC_P_H
 diff --git src/platforms/osx/kwindowsystem_macobjc.mm src/platforms/osx/kwindowsystem_macobjc.mm
 new file mode 100644
-index 0000000..e2ab50d
+index 0000000..d94eb07
 --- /dev/null
 +++ src/platforms/osx/kwindowsystem_macobjc.mm
-@@ -0,0 +1,555 @@
+@@ -0,0 +1,480 @@
 +/*
 +    This file is part of the KDE libraries
 +    Copyright (C) 2007 Laurent Montel (montel@kde.org)
@@ -1609,7 +1632,10 @@ index 0000000..e2ab50d
 +NSWin2WIdMap nsWin2WId;
 +bool nsWin2WIdInit = true;
 +
-+#ifdef QT_MAC_USE_COCOA
++#ifndef QT_MAC_USE_COCOA
++#error "KWindowSystem requires Qt to be built against Cocoa"
++#endif
++
 +@class QT_MANGLE_NAMESPACE(QNSView);
 +@class QT_MANGLE_NAMESPACE(QNSWindow);
 +
@@ -1619,9 +1645,6 @@ index 0000000..e2ab50d
 +    if (nsWin2WIdInit) {
 +        nsWin2WId.clear();
 +    }
-+//     NSLog(@"nsWindowFromWId checking WID %p,%@, QNSWindow?=%d NSWindow?=%d QNSView?=%d NSControl?=%d NSView?=%d", wid, w,
-+//           [w isKindOfClass:NSClassFromString(@"QNSWindow")], [w isKindOfClass:[NSWindow class]],
-+//           [w isKindOfClass:NSClassFromString(@"QNSView")], [w isKindOfClass:[NSControl class]], [w isKindOfClass:[NSView class]]);
 +    if ( [w isKindOfClass:NSClassFromString(@"QNSWindow")] || [w isKindOfClass:[NSWindow class]] ) {
 +        nsWin2WId[(NSWindow*) wid] = wid;
 +        return (NSWindow*) wid;
@@ -1639,13 +1662,11 @@ index 0000000..e2ab50d
 +        return NULL;
 +    }
 +}
-+#endif
 +
 +// find and return the NSDictionary describing the frontmost window, i.e. the 1st entry in the list that has WindowLayer==0
 +// the returned dictionary will have been retained, so it must be released by the caller.
 +NSDictionary *getNSDictForFrontWindow()
 +{
-+#ifdef QT_MAC_USE_COCOA
 +    NSArray *windowList = (id) CGWindowListCopyWindowInfo( kCGWindowListOptionAll | kCGWindowListOptionOnScreenOnly, kCGNullWindowID );
 +    NSDictionary *windowDict = NULL;
 +    for (windowDict in windowList) {
@@ -1654,22 +1675,16 @@ index 0000000..e2ab50d
 +            return [windowDict retain];
 +        }
 +    }
-+#endif
 +    return NULL;
 +}
 +
 +NSDictionary *getNSDictForWId(WId wid, bool retain=true)
 +{
-+#ifdef QT_MAC_USE_COCOA
 +    NSDictionary *windowDict = NULL;
 +    NSWindow *w = nsWindowFromWId(wid);
 +    NSArray *windowList = (id) CGWindowListCopyWindowInfo( kCGWindowListOptionAll, kCGNullWindowID );
-+//     NSLog( @"wid=%p,%p windowList=%@", wid, nsWindowFromWId(wid), windowList );
 +    for (windowDict in windowList) {
 +        NSInteger windowNumber = [[windowDict objectForKey:(id)kCGWindowNumber] integerValue];
-+//         NSLog( @"windowNumber %d,%ld => %p,%p", windowNumber, wid,
-+//                [NSApp windowWithWindowNumber:windowNumber],
-+//                nsWindowFromWId(wid) );
 +        if ( [NSApp windowWithWindowNumber:windowNumber] == w ) {
 +            if (retain) {
 +                return [windowDict retain];
@@ -1679,7 +1694,6 @@ index 0000000..e2ab50d
 +            }
 +        }
 +    }
-+#endif
 +    return NULL;
 +}
 +
@@ -1690,11 +1704,8 @@ index 0000000..e2ab50d
 +
 +QString getNSWindowDescription(WId wid)
 +{
-+#ifdef QT_MAC_USE_COCOA
 +    NSWindow *w = nsWindowFromWId(wid);
 +    QString ret;
-+//     NSDictionary *dict = getNSDictForWId(wid, false);
-+//     NSLog( @"%p=%@->%p dict => %@", wid, w, nsWin2WId[w], dict );
 +    if (w && [[w description] UTF8String]) {
 +        ret = QString::fromUtf8([[w description] UTF8String]);
 +        if ([[w title] length] > 0 && [[w title] UTF8String]) {
@@ -1705,9 +1716,6 @@ index 0000000..e2ab50d
 +        }
 +    }
 +    return ret;
-+#else
-+    return QString();
-+#endif
 +}
 +
 +QList<WId> kWindowSystemStackingOrder()
@@ -1717,7 +1725,6 @@ index 0000000..e2ab50d
 +    for (NSDictionary *windowDict in windowList) {
 +        if ( [[windowDict objectForKey:(id)kCGWindowLayer] intValue] == 0 ) {
 +            NSInteger windowNumber = [[windowDict objectForKey:(id)kCGWindowNumber] integerValue];
-+#ifdef QT_MAC_USE_COCOA
 +            NSWindow *w = [NSApp windowWithWindowNumber:windowNumber];
 +            if (nsWin2WId.contains(w)) {
 +                WId wid = nsWin2WId[w];
@@ -1728,7 +1735,6 @@ index 0000000..e2ab50d
 +                    lst.push_front(wid);
 +                }
 +            }
-+#endif
 +        }
 +    }
 +    qDebug() << "QList<WId> KWindowSystem::stackingOrder() will return" << lst;
@@ -1749,7 +1755,6 @@ index 0000000..e2ab50d
 +        windowNumber = [[windowDict objectForKey:(id)kCGWindowNumber] integerValue];
 +        // windowWithWindowNumber: will only return a non-null if the windowNumber is one of our own windows, sadly,
 +        // so most of the time it will return a value that can probably also be obtained through QApplication::activeWindow() .
-+#ifdef QT_MAC_USE_COCOA
 +        NSWindow *w = [NSApp windowWithWindowNumber:windowNumber];
 +        if (nsWin2WId.contains(w)) {
 +            wid = nsWin2WId[w];
@@ -1761,7 +1766,6 @@ index 0000000..e2ab50d
 +                NSLog(@"kWindowSystemActiveWindow(): Qt's activeWin %@ != NSDictFrontWindow %@", aw, w);
 +            }
 +        }
-+#endif
 +        [windowDict release];
 +    }
 +    else{
@@ -1773,19 +1777,16 @@ index 0000000..e2ab50d
 +void kWindowSystemActivateWindow( WId win, long time )
 +{
 +    Q_UNUSED(time);
-+#ifdef QT_MAC_USE_COCOA
 +    if (win) {
 +        NSWindow *w = nsWindowFromWId(win);
 +        [NSApp unhide:w];
 +        [w makeKeyWindow];
 +    }
-+#endif
 +}
 +
 +void kWindowSystemForceActivateWindow( WId win, long time )
 +{
 +    Q_UNUSED(time);
-+#ifdef QT_MAC_USE_COCOA
 +    NSWindow *w = nsWindowFromWId(win);
 +    if (w) {
 +        [NSApp unhide:w];
@@ -1793,45 +1794,36 @@ index 0000000..e2ab50d
 +        [w orderFrontRegardless];
 +        [w makeKeyWindow];
 +    }
-+#endif
 +}
 +
 +void kWindowSystemRaiseWindow( WId win )
 +{
-+#ifdef QT_MAC_USE_COCOA
 +    if (win) {
 +        NSWindow *w = nsWindowFromWId(win);
 +        [NSApp unhide:w];
 +        [w orderFrontRegardless];
 +    }
-+#endif
 +}
 +
 +void kWindowSystemLowerWindow( WId win )
 +{
-+#ifdef QT_MAC_USE_COCOA
 +    if (win) {
 +        [nsWindowFromWId(win) orderBack];
 +    }
-+#endif
 +}
 +
 +void kWindowSystemActivateApplication(bool force)
 +{
-+#ifdef QT_MAC_USE_COCOA
 +    [NSApp unhide:NSApp];
 +    [NSApp activateIgnoringOtherApps:force];
-+#endif
 +}
 +
 +void kWindowSystemDemandAttention( WId win, bool set )
 +{
-+#ifdef QT_MAC_USE_COCOA
 +    if (win) {
 +        [nsWindowFromWId(win) setDocumentEdited:set];
 +        [NSApp requestUserAttention:NSInformationalRequest];
 +    }
-+#endif
 +}
 +
 +int kWindowSystemCurrentDesktop()
@@ -1842,49 +1834,12 @@ index 0000000..e2ab50d
 +        nr = [[windowDict objectForKey:(id)kCGWindowWorkspace] integerValue];
 +        [windowDict release];
 +    }
-+//     NSArray *windowList = (id) CGWindowListCopyWindowInfo( kCGWindowListOptionAll, kCGNullWindowID );
-+//     for (NSDictionary *windowDict in windowList) {
-+//         NSNumber *nr = [windowDict objectForKey:(id)kCGWindowLayer];
-+//         if ( nr && [nr intValue] == 0 ) {
-+//             NSNumber *_nr = [windowDict objectForKey:(id)kCGWindowWorkspace];
-+//             if (_nr) {
-+//                 qDebug() << "Window on desktop" << [_nr integerValue];
-+//             }
-+//         }
-+//     }
 +    return nr;
 +}
 +
 +int kWindowSystemNumberOfDesktops()
 +{
-+#if 0
-+    // turns out this only works on 10.6 and earlier. I see little point supporting the function on
-+    // a great but unsupported OS ...
-+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-+    NSAppleScript *rowScript = [[NSAppleScript alloc] initWithSource:@"tell application \"System Events\"\n\
-+        tell expose preferences\n\
-+            tell spaces preferences\n\
-+                spaces rows\n\
-+            end tell\n\
-+        end tell\n\
-+    end tell"];
-+    NSAppleEventDescriptor *desc = [rowScript executeAndReturnError:NULL];
-+    int numRow = [desc int32Value];
-+
-+    NSAppleScript *colScript = [[NSAppleScript alloc] initWithSource:@"tell application \"System Events\"\n\
-+        tell expose preferences\n\
-+            tell spaces preferences\n\
-+                spaces columns\n\
-+            end tell\n\
-+        end tell\n\
-+    end tell"];
-+    desc = [colScript executeAndReturnError:NULL];
-+    int numCol = [desc int32Value];
-+    [pool drain];
-+    return numRow * numCol;
-+#else
 +    return 1;
-+#endif
 +}
 +
 +void kWindowSystemSetCurrentDesktop( int desktop )
@@ -1902,7 +1857,6 @@ index 0000000..e2ab50d
 +
 +void kWindowSystemSetOnAllDesktops( WId win, bool b )
 +{
-+#ifdef QT_MAC_USE_COCOA
 +    if (win) {
 +        if (b) {
 +            [nsWindowFromWId(win) setCollectionBehavior:NSWindowCollectionBehaviorCanJoinAllSpaces];
@@ -1911,19 +1865,14 @@ index 0000000..e2ab50d
 +            [nsWindowFromWId(win) setCollectionBehavior:NSWindowCollectionBehaviorDefault];
 +        }
 +    }
-+#endif
 +}
 +
 +void kWindowSystemSetOnDesktop( WId win, int desktop )
 +{
 +    int curDT = KWindowSystem::currentDesktop();
-+#ifdef QT_MAC_USE_COCOA
 +    if (win && desktop == curDT) {
 +        [nsWindowFromWId(win) setCollectionBehavior:NSWindowCollectionBehaviorMoveToActiveSpace];
-+    }
-+    else
-+#endif
-+    {
++    } else {
 +        qDebug() << "KWindowSystem::setOnDesktop( WId win, int desktop ) isn't yet implemented! win=" << win << "desktop=" << desktop << "current desktop=" << curDT;
 +    }
 +}
@@ -2074,7 +2023,6 @@ index 0000000..e2ab50d
 +    if (!m_noEmit) {
 +        emit KWindowSystem::self()->windowAdded(winfo.win());
 +    }
-+//     qDebug() << "applicationLaunched(): pid" << pid << "name=" << winfo.name() << "iconName=" << winfo.iconName();
 +
 +#ifdef EXPERIMENTAL_WINDOW_TRACKING
 +    // create an observer and listen for new window events
@@ -2114,10 +2062,10 @@ index 0000000..e2ab50d
 +
 diff --git src/platforms/osx/kwindowsystem_p_cocoa.h src/platforms/osx/kwindowsystem_p_cocoa.h
 new file mode 100644
-index 0000000..926921b
+index 0000000000000000000000000000000000000000..03fa6ce6c66ef2027fc3416604d3d7b33fa53768
 --- /dev/null
-+++ src/platforms/osx/kwindowsystem_p_cocoa.h
-@@ -0,0 +1,85 @@
++++ b/src/platforms/osx/kwindowsystem_p_cocoa.h
+@@ -0,0 +1,92 @@
 +/*
 +    Copyright 2015 René J.V. Bertin <rjvbertin@gmail.com>
 +
@@ -2200,17 +2148,24 @@ index 0000000..926921b
 +    void setMainWindow(QWidget *subwindow, WId id);
 +    static KWindowSystemPrivateCocoa *self();
 +    KWSPrivateCocoaInternal *s_d_func() const;
++
++    enum FilterInfo {
++        INFO_UNSET = 0,
++        INFO_BASIC = 1,  // desktop info, not per-window
++        INFO_WINDOWS = 2 // also per-window info
++    };
++    FilterInfo m_requestedInfo;
 +};
 +
 +#endif
 diff --git src/platforms/osx/plugin.cpp src/platforms/osx/plugin.cpp
 new file mode 100644
-index 0000000..a248f3e
+index 0000000..f6d3991
 --- /dev/null
 +++ src/platforms/osx/plugin.cpp
 @@ -0,0 +1,41 @@
 +/*
-+ * Copyright 2015 Martin Gräßlin <mgraesslin@kde.org>
++ * Copyright 2015 René J.V. Bertin <rjvbertin@gmail.com>
 + *
 + * This library is free software; you can redistribute it and/or
 + * modify it under the terms of the GNU Lesser General Public
@@ -2252,12 +2207,12 @@ index 0000000..a248f3e
 +}
 diff --git src/platforms/osx/plugin.h src/platforms/osx/plugin.h
 new file mode 100644
-index 0000000..331b8d6
+index 0000000..29ac8ee
 --- /dev/null
 +++ src/platforms/osx/plugin.h
 @@ -0,0 +1,40 @@
 +/*
-+ * Copyright 2015 Martin Gräßlin <mgraesslin@kde.org>
++ * Copyright 2015 René J.V. Bertin <rjvbertin@gmail.com>
 + *
 + * This library is free software; you can redistribute it and/or
 + * modify it under the terms of the GNU Lesser General Public
@@ -2296,35 +2251,3 @@ index 0000000..331b8d6
 +};
 +
 +#endif
-diff --git src/kwindowsystem.h src/kwindowsystem.h
-index a282ecd..a456c98 100644
---- src/kwindowsystem.h
-+++ src/kwindowsystem.h
-@@ -596,7 +596,11 @@ public:
-         /**
-          * The Wayland windowing system platform.
-          **/
--        Wayland
-+        Wayland,
-+        /**
-+         * The Mac's cocoa platform.
-+         **/
-+        Cocoa
-     };
-     /**
-      * Returns the Platform used by the QGuiApplication.
-@@ -624,6 +628,14 @@ public:
-      **/
-     static bool isPlatformWayland();
- 
-+    /**
-+     * Convenience method to check whether the Platform is Cocoa.
-+     * @see platform
-+     * @see isPlatformX11
-+     * @since somewhere after 5.27
-+     **/
-+    static bool isPlatformCocoa();
-+
- Q_SIGNALS:
- 
-     /**

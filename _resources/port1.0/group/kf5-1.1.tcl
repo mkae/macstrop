@@ -105,26 +105,26 @@ if { ![ info exists kf5.project ] } {
 
 # KF5 frameworks current version, which is the same for all frameworks
 if {![info exists kf5.version]} {
-    set kf5.version     5.29.0
+    set kf5.version     5.32.0
     # kf5.latest_version is supposed to be used only in the KF5-Frameworks Portfile
     # when updating it to the new version (=kf5.latest_version). This feature is
     # activated only when a file `port dir KF5-Frameworks`/files/enable_latest exists.
     set kf5.latest_version \
-                        5.29.0
+                        5.32.0
 }
 
 # KF5 Applications version
 if {![ info exists kf5.release ]} {
     set kf5.release     16.12.0
     set kf5.latest_release \
-                        16.12.1
+                        16.12.2
 }
 
 # KF5 Plasma version
 if {![ info exists kf5.plasma ]} {
-    set kf5.plasma      5.8.4
+    set kf5.plasma      5.9.3
     set kf5.latest_plasma \
-                        5.8.4
+                        5.9.3
 }
 
 platforms               darwin linux
@@ -205,6 +205,8 @@ if {${kf5::includecounter} == 0} {
         set kf5.applications_dir \
                             ${applications_dir}/KF5
         set kf5.libexec_dir ${prefix}/libexec/kde5
+        set kf5.pkgconfig_dir \
+                            ${prefix}/lib/pkgconfig
         configure.args-append \
                             -DBUNDLE_INSTALL_DIR=${kf5.applications_dir} \
                             -DCMAKE_DISABLE_FIND_PACKAGE_X11=ON \
@@ -217,6 +219,8 @@ if {${kf5::includecounter} == 0} {
         set kf5.applications_dir \
                             ${prefix}/bin
         set kf5.libexec_dir ${prefix}/lib/${build_arch}-linux-gnu/libexec
+        set kf5.pkgconfig_dir \
+                            ${prefix}/lib/${build_arch}-linux-gnu/pkgconfig
         cmake.install_rpath-prepend \
                             ${prefix}/lib/${build_arch}-linux-gnu
         configure.args-append \
@@ -304,9 +308,10 @@ if {${kf5::includecounter} == 0} {
                     system "chmod 755 ${destroot}${kf5.docs_dir}"
                     foreach doc [glob -nocomplain ${workpath}/apidocs/*.qch] {
                         xinstall -m 644 ${doc} ${destroot}${kf5.docs_dir}
-                        if {[info procs qt5.register_qch_files] ne ""} {
-                            qt5.register_qch_files ${kf5.docs_dir}/[file tail ${doc}]
-                        }
+                        # maybe not such a useful idea:
+#                         if {[info procs qt5.register_qch_files] ne ""} {
+#                             qt5.register_qch_files ${kf5.docs_dir}/[file tail ${doc}]
+#                         }
                     }
                     if {[variant_exists chm] && [variant_isset chm]} {
                         foreach doc [glob -nocomplain ${workpath}/apidocs/*.chm] {
@@ -360,6 +365,8 @@ if {${kf5::includecounter} == 0} {
     if {![info exists kf5.framework] && ![info exists kf5.portingAid]} {
         # explicitly define certain headers and libraries, to avoid
         # conflicts with those installed into system paths by the user.
+        # These are mostly remnants from the KDE4 PortGroup and are being
+        # pruned little by little when it becomes clear they're no longer needed.
         configure.args-append \
                             -DDOCBOOKXSL_DIR=${prefix}/share/xsl/docbook-xsl \
                             -DGETTEXT_INCLUDE_DIR=${prefix}/include \
@@ -385,13 +392,6 @@ if {${kf5::includecounter} == 0} {
                             -DLIBXML2_XMLLINT_EXECUTABLE=${prefix}/bin/xmllint \
                             -DLIBXSLT_INCLUDE_DIR=${prefix}/include \
                             -DLIBXSLT_LIBRARIES=${prefix}/lib/libxslt.${kf5::libs_ext}
-#                             -DOPENAL_INCLUDE_DIR=/System/Library/Frameworks/OpenAL.framework/Headers \
-#                             -DOPENAL_LIBRARY=/System/Library/Frameworks/OpenAL.framework
-#                             -DPNG_INCLUDE_DIR=${prefix}/include \
-#                             -DPNG_PNG_INCLUDE_DIR=${prefix}/include \
-#                             -DPNG_LIBRARY=${prefix}/lib/libpng.${kf5::libs_ext} \
-#                             -DTIFF_INCLUDE_DIR=${prefix}/include \
-#                             -DTIFF_LIBRARY=${prefix}/lib/libtiff.${kf5::libs_ext}
     }
 
     post-fetch {
@@ -599,19 +599,37 @@ if {${kf5::includecounter} == 0} {
 
     proc kf5.use_latest {lversion} {
         global kf5.latest_release kf5.latest_version kf5.latest_plasma kf5.project kf5.set_project kf5.branch
-        global version
+        global version subport
         upvar #0 kf5.version v
         upvar #0 kf5.release r
         upvar #0 kf5.plasma p
         upvar #0 kf5.branch b
         switch -nocase ${lversion} {
-            kf5.version     {set v ${kf5.latest_version}}
-            kf5.release     {set r ${kf5.latest_release}}
-            kf5.plasma      {set p ${kf5.latest_plasma}}
-            frameworks      {set v ${kf5.latest_version}}
-            applications    {set r ${kf5.latest_release}}
-            plasma          {set p ${kf5.latest_plasma}}
-            default {
+            kf5.version     {
+                ui_debug "Using kf5.version=${kf5.latest_version} instead of ${v} for ${subport}"
+                set v ${kf5.latest_version}
+            }
+            kf5.release     {
+                ui_debug "Using kf5.release=${kf5.latest_release} instead of ${r} for ${subport}"
+                set r ${kf5.latest_release}
+            }
+            kf5.plasma      {
+                ui_debug "Using kf5.plasma=${kf5.latest_plasma} instead of ${p} for ${subport}"
+                set p ${kf5.latest_plasma}
+            }
+            frameworks      {
+                ui_debug "Using kf5.version=${kf5.latest_version} instead of ${v} for ${subport}"
+                set v ${kf5.latest_version}
+            }
+            applications    {
+                ui_debug "Using kf5.release=${kf5.latest_release} instead of ${r} for ${subport}"
+                set r ${kf5.latest_release}
+            }
+            plasma          {
+                ui_debug "Using kf5.plasma=${kf5.latest_plasma} instead of ${p} for ${subport}"
+                set p ${kf5.latest_plasma}
+            }
+            default         {
                 ui_error "Illegal argument ${lversion} to kf5.use_latest"
                 return -code error "Illegal argument to kf5.use_latest"
             }

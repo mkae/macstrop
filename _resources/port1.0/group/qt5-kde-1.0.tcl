@@ -46,19 +46,84 @@
 # Qt has what is calls reference configurations, which are said to be thoroughly tested
 # Qt also has configurations which are occasionally tested
 # see http://doc.qt.io/qt-5/supported-platforms.html#reference-configurations
-global qt5_min_tested_version
-global qt5_max_tested_version
-global qt5_min_reference_version
-global qt5_max_reference_version
-set qt5_min_tested_version     12
-set qt5_max_tested_version     15
-set qt5_min_reference_version  12
-set qt5_max_reference_version  15
+# global qt5_min_tested_version
+# global qt5_max_tested_version
+# global qt5_min_reference_version
+# global qt5_max_reference_version
+# set qt5_min_tested_version     12
+# set qt5_max_tested_version     15
+# set qt5_min_reference_version  12
+# set qt5_max_reference_version  15
 
 if {[tbool just_want_qt5_version_info]} {
+    PortGroup           qt5 1.0
     return
 }
 
+# Check what Qt5 installation flavour already exists, or if not if the port calling us
+# indicated a preference. If not, use the default/mainstream port:qt5 .
+# Also use qt5-kde if we're on 10.6 because qt5-kde provides a fallback to Qt 5.3.2 on that OS version
+
+# first, check if port:qt5-kde or a port:qt5-kde-devel is installed, or if we're on Mac OS X 10.6
+# NB: the qt5-kde-devel ports may never exist officially in MacPorts but is used locally by KF5 port maintainers!
+if {[file exists ${prefix}/include/qt5/QtCore/QtCore] || ${os.major} == 10} {
+    # Qt5 has been installed through port:qt5-kde or port:qt5-kde-devel
+    ui_debug "Qt5 is provided by port:qt5-kde"
+    # we're in the right PortGroup, otherwise we'd need to
+    # PortGroup           qt5-kde 1.0
+    set qt5.using_kde   yes
+} elseif {[file exists ${prefix}/libexec/qt5/plugins]
+        && [file type ${prefix}/libexec/qt5/plugins] eq "directory"} {
+    # qt5-qtbase is installed: Qt5 has been installed through a standard port:qt5 port
+    # (checking if "plugins" is a directory is probably redundant)
+    ui_debug "Qt5 is provided by port:qt5"
+    PortGroup           qt5 1.0
+    if {[info exists qt5.prefer_kde] && [info exists building_qt5]} {
+        # user tries to install say qt5-kde-qtwebkit against qt5-qtbase etc.
+        ui_error "You cannot install a Qt5-KDE port with port:qt5 or one of its subports installed!"
+        # print the error but only raise it when attempting to fetch or configure the port.
+        pre-fetch {
+            return -code error "Deactivate the conflicting port:qt5 port(s) first!"
+        }
+        pre-configure {
+            return -code error "Deactivate the conflicting port:qt5 port(s) first!"
+        }
+    }
+    # we're done
+    return
+} elseif {[info exists qt5.prefer_kde]} {
+    # The calling port has indicated a preference and no Qt5 port is installed already
+    ui_debug "Qt5 will be provided by port:qt5-kde, by request"
+    # we're in the right PortGroup, otherwise we'd need to
+    # PortGroup           qt5-kde 1.0
+    set qt5.using_kde   yes
+} else {
+    # default fall-back to mainstream port:qt5
+    ui_debug "Qt5 will be provided by port:qt5 (default)"
+    PortGroup           qt5 1.0
+    # we're done
+    return
+}
+
+# # this shouldn't be necessary (already done by qt5-1.0.tcl and impossible here if we return immediately after loading that file):
+# if {![tbool qt5.using_kde]} {
+#     # we're back from `PortGroup qt5 1.0`, add some finishing touches and then return
+#     if {[info exists qt5.prefer_kde]} {
+#         # this is a port that prefers port:qt5-kde and thus expects most of Qt5 to be installed
+#         # through that single port rather than enumerate all components it depends on.
+#         depends_lib-append  port:qt5
+#     }
+#     if {![info exists qt_cmake_defines]} {
+#         # the Qt5 PortGroups used to define a variable that is no longer provided by qt5-mac-1.0.tcl;
+#         # set it to an empty value so that it can be referenced without side-effects.
+#         global qt_cmake_defines
+#         set qt_cmake_defines ""
+#     }
+#     # we're done now.
+#     return
+# }
+
+######### checks that should never trigger #########
 if {[file exists ${prefix}/libexec/qt5/plugins]
         && [file type ${prefix}/libexec/qt5/plugins] eq "directory"} {
     # Qt5 has been installed through port:qt5, which leads to certain incompatibilities
@@ -86,6 +151,7 @@ if {[info exists qt5.using_kde] && !${qt5.using_kde}} {
     ui_error "qt5-kde-1.0.tcl is being imported after qt5-mac-1.0.tcl"
     return -code error "importing 2 incompatible Qt5 PortGroups"
 }
+####################################################
 
 namespace eval qt5 {
     if {[info exists dont_include_twice] && [info exists currentportgroupdir]} {
@@ -729,10 +795,12 @@ proc qt5.register_qch_files {qchfiles} {
     global prefix destroot
     set qchdir ${prefix}/share/doc/qch
     if {[file exists ${qchdir}] && [file isdirectory ${qchdir}]} {
-        xinstall -m 755 -d ${destroot}${qchdir}
         foreach d ${qchfiles} {
-            set target [string map [list ${destroot} ""] ${d}]
-            ln -s ${target} ${destroot}${qchdir}
+            if {[file exists ${d}]} {
+                xinstall -m 755 -d ${destroot}${qchdir}
+                set target [string map [list ${destroot} ""] ${d}]
+                ln -s ${target} ${destroot}${qchdir}
+            }
         }
     }
 }
@@ -753,8 +821,10 @@ post-activate {
         } elseif {[file exists "${qhcdir}/${qhcfile}"]} {
             # only regenerate otherwise when the collection file is out-of-date
             set tDir [file mtime "${qhcdir}"]
+            set tchDir [file mtime "${qchdir}"]
             set tFile [file mtime "${qhcdir}/${qhcfile}"]
-            set needs_generate [expr ${tDir} > ${tFile}]
+            set needs_generate [expr ${tDir} > ${tFile} || ${tchDir} > ${tFile}]
+            ui_debug "Qt help collection: tDir \"${qhcdir}\"=${tDir} , tchDir \"${qchdir}\"=${tchDir} , File \"${qhcdir}/${qhcfile}\" ${tFile}"
         } else {
             set needs_generate yes
         }
@@ -768,14 +838,11 @@ post-activate {
                 }
             }
             if {[file exists "${qhcdir}/${qhcfile}"]} {
-                ui_msg "--->  Regenerating Qt help collection file in ${qhcdir}"
-                # unregister all entries if the collectionfile already exists
-                foreach q ${candidates} {
-                    catch {system -W ${qhcdir} "${prefix}/bin/assistant-qt5 -collectionFile ${qhcfile} -unregister [file normalize ${q}]"}
-                }
-            } elseif {![catch {set fp [open "${qhcdir}/${qhcpfile}" "w"]} err]} {
-                # create an empty collection file
-                ui_msg "--->  Generating Qt help collection file in ${qhcdir}"
+                file delete -force "${qhcdir}/${qhcfile}"
+            }
+            if {![catch {set fp [open "${qhcdir}/${qhcpfile}" "w"]} err]} {
+                # create a collection file corresponding to Qt's own documentation
+                ui_msg "--->  (Re)Generating Qt help collection file in ${qhcdir}"
                 puts ${fp} "<?xml version=\"1.0\" encoding=\"utf-8\" ?>"
                 puts ${fp} "<QHelpCollectionProject version=\"1.0\">"
                 puts ${fp} "  <assistant>"
@@ -783,6 +850,13 @@ post-activate {
                 puts ${fp} "    <cacheDirectory>QtProject/Assistant-MP</cacheDirectory>"
                 puts ${fp} "    <enableFullTextSearchFallback>true</enableFullTextSearchFallback>"
                 puts ${fp} "  </assistant>"
+                puts ${fp} "  <docFiles>"
+                puts ${fp} "    <register>"
+                foreach q [glob -nocomplain ${qhcdir}/*.qch] {
+                    puts ${fp} "      <file>[file normalize ${q}]</file>"
+                }
+                puts ${fp} "    </register>"
+                puts ${fp} "  </docFiles>"
                 puts ${fp} "</QHelpCollectionProject>"
                 close ${fp}
                 catch {system -W ${qhcdir} "time ${qt_bins_dir}/qcollectiongenerator ${qhcpfile} -o ${qhcfile}"}
@@ -795,8 +869,12 @@ post-activate {
                 foreach q ${candidates} {
                     catch {system -W ${qhcdir} "${prefix}/bin/assistant-qt5 -collectionFile ${qhcfile} -register [file normalize ${q}]"}
                 }
+                # be sure the file mdate is updated"
+                system "touch \"${qhcdir}/${qhcfile}\""
             }
         }
+    } else {
+        ui_debug "qchdir=\"${qchdir}\" and/or qhcdir=\"${qhcdir}\" don't exist as directories, ignoring Qt help collection"
     }
 }
 

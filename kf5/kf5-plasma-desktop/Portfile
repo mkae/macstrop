@@ -13,8 +13,8 @@ description         KDE desktop components
 long_description    KDE desktop components, providing notably \
                     the KDE control modules allowing to configure various \
                     settings like fonts, colour palettes, preferred theme etc.
-checksums           rmd160  b4f8012963aa7bf46d225b70aa59213fb9a74f9b \
-                    sha256  78902e67664e5a1bcddc833b28cce9734c0a3993e0c5ddb3285501494e47bc1d
+checksums           rmd160  0f6755d9d35700f538b69581cc5ca9d4a64042d1 \
+                    sha256  351eb8d4d1b78c5a18051d7c3f7443bfa8d46dc09714d62b19a8846683b00215
 
 kf5.allow_apidocs_generation no
 
@@ -39,7 +39,7 @@ depends_lib-append  port:phonon-qt5
 maintainers         gmail.com:rjvbertin mk openmaintainer
 
 patch.pre_args      -Np1
-patchfiles-append   patch-disable-unwanted-581+.diff
+patchfiles-append   patch-disable-unwanted-593+.diff
 # correct the path: /etc -> @PREFIX@/etc, /usr -> @PREFIX@
 # see the post-patch block below
 patchfiles-append   patch-prefix-etc.diff \
@@ -60,11 +60,6 @@ platform darwin {
                     port:freetype \
                     port:fontconfig \
                     port:iso-codes
-#     # optional and apparently not functional on Mac:
-#     depends_lib-append \
-#                     port:pulseaudio \
-#                     path:lib/pkgconfig/glib-2.0.pc:glib2 \
-#                     port:libcanberra
     # there are additional components to exclude on OS X, plus
     # a few other modifications to make.
     patchfiles-append \
@@ -79,7 +74,8 @@ post-patch {
 }
 
 configure.args-append \
-                    -DPLASMA_DESKTOP_BUILD_ALL=OFF
+                    -DPLASMA_DESKTOP_BUILD_ALL=OFF \
+                    -DBUILD_TESTING=OFF
 
 livecheck.type      regex
 livecheck.url       http://download.kde.org/stable/plasma/

@@ -24,6 +24,11 @@ if {${os.platform} eq "darwin"} {
 
 # mapping framework names to their tier; entries in build order
 set kf5::tier1_frameworks {kapidox attica karchive kcodecs kconfig kcoreaddons kdbusaddons kdnssd kguiaddons ki18n kidletime kimageformats kitemmodels kitemviews kplotting ksyntaxhighlighting kwidgetsaddons kwindowsystem solid sonnet threadweaver}
+platform linux {
+    set kf5::tier1_frameworks [lappend kf5::tier1_frameworks kwayland]
+}
+# kgenapidox is a fossil:
+set kf5::tier1_frameworks [lappend kf5::tier1_frameworks kgenapidox]
 set kf5::tier2_frameworks {kauth kcompletion kcrash kdoctools kfilemetadata kjobwidgets knotifications kpackage kpty kunitconversion}
 set kf5::tier3_frameworks {kconfigwidgets kiconthemes kservice kglobalaccel ktextwidgets kxmlgui kbookmarks kwallet kio baloo kactivities kdeclarative kcmutils kinit kded kparts kdewebkit kdesignerplugin kdesu kemoticons knewstuff knotifyconfig kpeople plasma-framework ktexteditor kxmlrpcclient krunner}
 set kf5::tier4_frameworks {frameworkintegration}
@@ -39,13 +44,17 @@ proc kf5::tier {{fw -1}} {
             set fw [string map {"kf5-" ""} ${subport}]
         }
     }
+    set fwnd [string map {"-devel" ""} ${fw}]
     foreach t {1 2 3 4} {
         namespace upvar ::kf5 tier${t}_frameworks lname
-        if {[lsearch -exact $lname ${fw}] >= 0} {
+        if {[lsearch -exact $lname ${fw}] >= 0 || [lsearch -exact $lname ${fwnd}] >= 0 \
+                || ${fw} eq "tier${t}-frameworks" || ${fw} eq "portingaid-frameworks"} {
             return "tier${t}"
         }
     }
-    if {[lsearch -exact ${kf5::portingaid_frameworks} ${fw}] >= 0} {
+    if {[lsearch -exact ${kf5::portingaid_frameworks} ${fw}] >= 0 \
+                || [lsearch -exact ${kf5::portingaid_frameworks} ${fwnd}] >= 0 \
+                || ${fw} eq "tier${t}-frameworks" || ${fw} eq "portingaid-frameworks"} {
         return "portingAid"
     } elseif {${fw} ne "placeholder"} {
         ui_error "unknown framework ${fw} in kf5::tier, `port file ${subport}` line [dict get [info frame 0] line]"
@@ -54,17 +63,51 @@ proc kf5::tier {{fw -1}} {
 }
 
 # check what frameworks version we will use; kf5.version or kf5.latest_version
-# if it's different and the user enabled the alternative (for port devs. only!).
+# if it's different and (NO LONGER if!) the user enabled the alternative (for port devs. only!).
 # add the tier levels one by one to the switch to override the default (= using kf5.version}).
 # This way, upgrades can be handled and committed per tier (in order!!).
-if {(${kf5.latest_version} ne ${kf5.version}) && [file exists ${filespath}/enable_latest]} {
+# The enable check was removed because it gave rise to deactivation errors as the enabler file
+# wasn't copied to the registry ${filespath}. If ever it is justified, introduce a +use_latest
+# or +ignore_latest variant.
+ui_debug "Comparing version ${kf5.version} to latest_version ${kf5.latest_version}"
+if {(${kf5.latest_version} ne ${kf5.version})} {
     set tier [kf5::tier]
-#         "tier2" -
-#         "tier3" -
-#         "tier4" -
-#         "portingAid" -
+#         "tier2" {
+#             ui_debug "${tier} frameworks use latest_version"
+#             kf5.use_latest  kf5.version
+#             version         ${kf5.version}
+#             set checksums.table \
+#                     checksums-${kf5.version}.table
+#             set PVERSION    ""
+#         }
+#         "tier3" {
+#             ui_debug "${tier} frameworks use latest_version"
+#             kf5.use_latest  kf5.version
+#             version         ${kf5.version}
+#             set checksums.table \
+#                     checksums-${kf5.version}.table
+#             set PVERSION    ""
+#         }
+#         "tier4" {
+#             ui_debug "${tier} frameworks use latest_version"
+#             kf5.use_latest  kf5.version
+#             version         ${kf5.version}
+#             set checksums.table \
+#                     checksums-${kf5.version}.table
+#             set PVERSION    ""
+#         }
+#         "portingAid" {
+#             ui_debug "${tier} frameworks use latest_version"
+#             kf5.use_latest  kf5.version
+#             version         ${kf5.version}
+#             set checksums.table \
+#                     checksums-${kf5.version}.table
+#             set PVERSION    ""
+#         }
+    ui_debug "${subport} is registered as a ${tier} framework"
     switch ${tier} {
         "tier1" {
+            ui_debug "${tier} frameworks use latest_version"
             kf5.use_latest  kf5.version
             version         ${kf5.version}
             set checksums.table \
@@ -219,9 +262,6 @@ subport kf5-kapidox {
                     port:py27-doxyqml \
                     port:py27-pygraphviz
     }
-    # https://commits.kde.org/kapidox/5ff9b4839a5daaca84585eee85ae10c1e6d9ff7c
-    patchfiles-append \
-                    kapidox/patch-kapidox-include-objc++.diff
     patchfiles-append \
                     kapidox/patch-lucidagrande.diff
     # https://git.reviewboard.kde.org/r/129661/ (20161216)
@@ -417,6 +457,8 @@ subport kf5-kcoreaddons {
     kf5::set_checkums
     depends_lib-append \
                     port:shared-mime-info
+    patchfiles-append \
+                    kcoreaddons/patch-kprocess-sh.diff
     platform darwin {
         configure.args-append \
                     -DKDE4_DEFAULT_HOME=Library/Preferences/KDE
@@ -633,13 +675,16 @@ subport kf5-kwindowsystem {
 
         kf5.depends_qt5_components \
                     qtmacextras
-        pre-patch {
-            file delete \
-                    ${worksrcpath}/src/platforms/osx/kwindowinfo.cpp \
-                    ${worksrcpath}/src/platforms/osx/kwindowinfo_mac_p.h
-        }
+#         pre-patch {
+#             file delete \
+#                     ${worksrcpath}/src/platforms/osx/kwindowinfo.cpp \
+#                     ${worksrcpath}/src/platforms/osx/kwindowinfo_mac_p.h
+#         }
         patchfiles-append \
-                    kwindowsystem/patch-kwinsys-osx-plugin.diff
+                    kwindowsystem/patch-kwinsys-osx-plugin-complete.diff
+#         # this one needs a separate API-rewriting effort
+#         patchfiles-append \
+#                     kwindowsystem/patch-kwinsys-osx-adapt.diff
         variant x11 description {build the X11 plugin for use with Qt's XCB QPA} {
             configure.args-replace \
                     -DCMAKE_DISABLE_FIND_PACKAGE_X11=ON -DCMAKE_DISABLE_FIND_PACKAGE_X11=OFF
@@ -674,23 +719,25 @@ subport kf5-kwindowsystem-devel {
     set kf5.framework \
                     kwindowsystem
     fetch.type      git
-# #     v4.100.0-rc1-188-ge993b77
-#     git.branch      e993b77c503bccf2ab68dc8a61abb633c6fcb8a0
-#     v4.100.0-rc1-193-gb12d7ea
-    git.branch      b12d7ea341bcd3e567c647fed7f00d027dd9556e
-    version         ${version}.4.100.0.193
+# #     v4.100.0-rc1-202-g5b02386
+#     git.branch      5b02386140c8573f7b056242bdaa52f79df22aa9
+#     version         5.31.0.4.100.0.202
+    # v4.100.0-rc1-204-g536f092
+    git.branch      536f0924de3a33c9ab7c0658e6658f17cddca1d6
+    version         5.31.0.4.100.0.204
     platform darwin {
         test.cmd    echo
         test.target no tests for this framework
 
-        pre-patch {
-            file delete \
-                    ${worksrcpath}/src/platforms/osx/kwindowinfo.cpp \
-                    ${worksrcpath}/src/platforms/osx/kwindowinfo_mac_p.h
-        }
+#         pre-patch {
+#             file delete \
+#                     ${worksrcpath}/src/platforms/osx/kwindowinfo.cpp \
+#                     ${worksrcpath}/src/platforms/osx/kwindowinfo_mac_p.h
+#         }
         # https://git.reviewboard.kde.org/r/126291/
+        # https://phabricator.kde.org/D5069
         patchfiles-append \
-                    kwindowsystem/patch-kwinsys-osx-plugin.diff
+                    kwindowsystem/patch-kwinsys-osx-plugin-complete.diff
         variant x11 description {build the X11 plugin for use with Qt's XCB QPA} {
             configure.args-replace \
                     -DCMAKE_DISABLE_FIND_PACKAGE_X11=ON -DCMAKE_DISABLE_FIND_PACKAGE_X11=OFF
@@ -709,8 +756,10 @@ subport kf5-kwindowsystem-devel {
             }
         }
     }
-    patchfiles-append \
+    variant qt57 description {provide a workaround for shortcut issues in Qt 5.7} {
+        patchfiles-append \
                     kwindowsystem/patch-shift-modifier.diff
+    }
 }
 
 subport kf5-solid {
@@ -813,6 +862,7 @@ subport kf5-kauth {
                     kauth
     kf5::set_checkums
     # https://git.reviewboard.kde.org/r/126086/
+    # https://commits.kde.org/kauth/5858ee8b3ee4ab6174e4893f35ae8e17d2ad3523
     patchfiles-append \
                     kauth${PVERSION}/patch-kauth-osx.diff
     kf5.depends_frameworks \
@@ -925,9 +975,6 @@ subport kf5-kfilemetadata {
                     path:lib/libavcodec.dylib:ffmpeg \
                     port:ebook-tools
     }
-    # reported upstream
-#     patchfiles-append \
-#                     kfilemetadata/patch-kfilemdata-compversion5.diff
     kf5.kde4compat {
         # even in kde4compat mode we can be in conflict with port:kfilemetadata
         # if the KDE4 ports were installed without headerfile migration.
@@ -962,6 +1009,7 @@ subport kf5-kjobwidgets {
     kf5::set_checkums
     kf5.depends_frameworks \
                     kcoreaddons kwidgetsaddons
+#     https://commits.kde.org/kjobwidgets/fd32254284ab2b2ada36bb768a757a4a33f64546
     patchfiles-append \
                     patch-kjobwidgets-preserve-window-icon.diff
     test.cmd        echo
@@ -991,12 +1039,13 @@ subport kf5-knotifications {
                     knotifications/patch-knotifications-ignore-full_session-envvar.diff
     }
     # awaiting brilliant ideas: https://git.reviewboard.kde.org/r/128043/
+    # https://phabricator.kde.org/D5070
     patchfiles-append \
                     knotifications/patch-knotifications-better-sound-warning+support-sysbeep.diff
     # https://git.reviewboard.kde.org/r/126369/
+    # https://commits.kde.org/knotifications/a6672ec04eafb7580a6a122806e826f6d5102bdd
     patchfiles-append \
-                    knotifications/patch-knotifications-OSX-adaptations.diff
-    patchfiles-append \
+                    knotifications/patch-knotifications-OSX-adaptations.diff \
                     knotifications/patch-knotifications-OSX-adaptations-testing.diff
     test.cmd        echo
     test.target     no tests for this framework
@@ -1013,8 +1062,10 @@ subport kf5-kpackage {
     kf5.depends_frameworks \
                     karchive kcoreaddons ki18n
     # this one could be reported upstream:
+    # https://commits.kde.org/kpackage/8ee6eee23a7cc44a668b488b79960047e7047d45
     patchfiles-append \
-                    patch-kpackage-autotests+tool-nogui.diff \
+                    patch-kpackage-autotests+tool-nogui.diff
+    patchfiles-append \
                     patch-kpackage-doctools-accept-older-version.diff
 }
 
@@ -1070,7 +1121,7 @@ subport kf5-baloo {
         depends_lib-append \
                     port:lmdb
         patchfiles-append \
-                    patch-baloo-nongui-execs.diff
+                    baloo/patch-baloo-nongui-execs.diff
         post-destroot {
             # delete a file that isn't supposed to be used, and conflicts with KDE4's baloo:
             if {[file exists ${destroot}${prefix}/share/dbus-1/interfaces/org.kde.baloo.file.indexer.xml]} {
@@ -1116,13 +1167,15 @@ subport kf5-kactivities {
         check_kde4_header kactivities/version.h kactivities
         post-destroot {
             # we'll presume that KDE ports use the CMake files, not pkgconfig
-            file rename ${destroot}${prefix}/lib/pkgconfig/libKActivities.pc ${destroot}${prefix}/lib/pkgconfig/libKF5Activities.pc
+            file rename ${destroot}${kf5.pkgconfig_dir}/libKActivities.pc ${destroot}${kf5.pkgconfig_dir}/libKF5Activities.pc
         }
     } else {
         post-destroot {
             # make libKF5Activities.pc available in non-compat mode too so dependent ports don't
             # have to test which kf5-kactivities variant is installed.
-            ln -s libKActivities.pc ${destroot}${prefix}/lib/pkgconfig/libKF5Activities.pc
+            if {[file exists ${destroot}${kf5.pkgconfig_dir}/libKActivities.pc]} {
+                ln -s libKActivities.pc ${destroot}${kf5.pkgconfig_dir}/libKF5Activities.pc
+            }
         }
     }
     test.cmd        echo
@@ -1203,8 +1256,6 @@ subport kf5-kdeclarative {
 }
 
 subport kf5-kded {
-    # revbump for Qt 5.7.1
-    revbump_for_version 1 5.29.0
     description     Central daemon of KDE work spaces
     long_description \
                     KDED is the KDE Daemon which runs in the background and performs \
@@ -1387,7 +1438,6 @@ subport kf5-kinit {
 }
 
 subport kf5-kio {
-    revbump_for_version 2 5.29.0
     description     Network transparent access to files and data
     long_description \
                     This framework implements almost all the file management functions you \
@@ -1448,6 +1498,136 @@ subport kf5-kio {
     }
 }
 
+subport kf5-kirigami {
+    description     KDE’s *future* lightweight user interface framework for mobile and convergent applications.
+    long_description \
+                    Kirigami is KDE’s *future* lightweight user interface framework for mobile and convergent \
+                    applications. \
+                    This framework doesn't yet have a release version, please install ${subport}-devel instead.
+    conflicts-append \
+                    kf5-kirigami-devel
+    set kf5.framework \
+                    kirigami
+    version         0.0.0
+    variant examples description {install any examples provided} {}
+    pre-fetch {
+        ui_error "This framework doesn't yet have a release version, please install ${subport}-devel instead"
+        return -code error "Please use ${subport}-devel for now"
+    }
+}
+
+subport kf5-kirigami-devel {
+    description     KDE’s lightweight user interface framework for mobile and convergent applications.
+    long_description \
+                    Kirigami is KDE’s lightweight user interface framework for mobile and convergent \
+                    applications. It allows Qt developers to create applications easily that run on \
+                    most major mobile and desktop platforms without modification (though adapted user \
+                    interfaces for different form-factors are supported and recommended for optimal \
+                    user experience). It extends the touch-friendly Qt Quick Controls with larger \
+                    application building blocks, following the design philosophy laid out in the \
+                    Kirigami Human Interface Guidelines.
+    conflicts-append \
+                    kf5-kirigami
+    set kf5.framework \
+                    kirigami
+    fetch.type      git
+    # v1.1.0-21-ga2f43a8
+    git.branch      a2f43a82b36404f252db3c46556c448b42f50dc4
+    version         5.31.0.1.1.0.21
+    variant examples description {install any examples provided} {
+        patchfiles-append \
+                    kirigami/patch-kirig-add-app-icon.diff
+        configure.args-append \
+                    -DBUILD_EXAMPLES=ON
+    }
+    depends_build-append \
+                    port:git
+    kf5.depends_qt5_components \
+                    qtdeclarative qtsvg
+    # this is a Tier1 framework with an optional dependency on a Tier3 framework. Since
+    # we make that a non-optional dependency we include Kirigami in the Tier3 frameworks.
+    kf5.depends_frameworks \
+                    plasma-framework
+    post-destroot {
+        if {[variant_isset examples]} {
+            ifplatform darwin {
+                file delete -force ${destroot}${kf5.applications_dir}/kirigamigallery.app
+            } else {
+                xinstall -m 755 -d ${destroot}${kf5.applications_dir}/examples
+                file rename ${destroot}${kf5.applications_dir}/kirigamigallery ${destroot}${kf5.applications_dir}/examples/
+            }
+        }
+    }
+}
+
+subport kf5-kirigami2 {
+    description     KDE’s *future* lightweight user interface framework for mobile and convergent applications.
+    long_description \
+                    Kirigami is KDE’s *future* lightweight user interface framework for mobile and convergent \
+                    applications. \
+                    This framework doesn't yet have a release version, please install ${subport}-devel instead.
+    conflicts-append \
+                    kf5-kirigami2-devel
+    set kf5.framework \
+                    kirigami2
+    version         0.0.0
+    variant examples description {install any examples provided} {}
+    pre-fetch {
+        ui_error "This framework doesn't yet have a release version, please install ${subport}-devel instead"
+        return -code error "Please use ${subport}-devel for now"
+    }
+}
+
+subport kf5-kirigami2-devel {
+    description     KDE’s lightweight user interface framework for mobile and convergent applications.
+    long_description \
+                    Kirigami is KDE’s lightweight user interface framework for mobile and convergent \
+                    applications. It allows Qt developers to create applications easily that run on \
+                    most major mobile and desktop platforms without modification (though adapted user \
+                    interfaces for different form-factors are supported and recommended for optimal \
+                    user experience). It extends the touch-friendly Qt Quick Controls with larger \
+                    application building blocks, following the design philosophy laid out in the \
+                    Kirigami Human Interface Guidelines.
+    conflicts-append \
+                    kf5-kirigami2
+    set kf5.framework \
+                    kirigami2
+    fetch.type      git
+    # v2.0.0-28-ge51257a
+    git.branch      e51257ac9304238982ee38ca6da9acd91dadab02
+    version         5.31.0.2.0.0.28
+    variant examples description {install any examples provided} {
+        patchfiles-append \
+                    kirigami2/patch-kirig-add-app-icon.diff
+        configure.args-append \
+                    -DBUILD_EXAMPLES=ON
+    }
+    pre-fetch {
+        if {[vercmp [qt5.active_version] 5.7.0] < 0} {
+            ui_error "This framework needs Qt >= 5.7.0"
+            return -code error "Needs a more recent Qt version"
+        }
+    }
+    depends_build-append \
+                    port:git
+    kf5.depends_qt5_components \
+                    qtdeclarative qtsvg
+    # this is a Tier1 framework with an optional dependency on a Tier3 framework. Since
+    # we make that a non-optional dependency we include Kirigami in the Tier3 frameworks.
+    kf5.depends_frameworks \
+                    plasma-framework
+    post-destroot {
+        if {[variant_isset examples]} {
+            ifplatform darwin {
+                file delete -force ${destroot}${kf5.applications_dir}/kirigami2gallery.app
+            } else {
+                xinstall -m 755 -d ${destroot}${kf5.applications_dir}/examples
+                file rename ${destroot}${kf5.applications_dir}/kirigami2gallery ${destroot}${kf5.applications_dir}/examples/
+            }
+        }
+    }
+}
+
 subport kf5-knewstuff {
     description     Framework for downloading and sharing additional application data
     long_description \
@@ -1464,9 +1644,6 @@ subport kf5-knewstuff {
                     kcoreaddons ki18n kiconthemes kio \
                     kitemviews kservice ktextwidgets \
                     kwidgetsaddons kxmlgui
-    # https://commits.kde.org/knewstuff/bb1476119ecb416305b5dec99dc270305a41f291
-    patchfiles-append \
-                    knewstuff${PVERSION}/patch-knewstuff-autotests.diff
 }
 
 subport kf5-knotifyconfig {
@@ -1566,8 +1743,6 @@ subport kf5-plasma-framework {
 }
 
 subport kf5-kservice {
-    # revbump for Qt 5.7.1
-    revbump_for_version 1 5.29.0
     description     Plugin framework for desktop services
     long_description \
                     KService provides a plugin framework for handling desktop services. Services can \
@@ -1585,15 +1760,14 @@ subport kf5-kservice {
                     kconfig kcoreaddons kcrash kdbusaddons kdoctools ki18n
     patchfiles-append \
                     kservice/patch-kservice-xdg-menu-prefix.diff \
-                    kservice/patch-kservice-fix-invokeBrowser.diff \
-                    kservice/patch-kservice-silence-warnings.diff
+                    kservice/patch-kservice-fix-invokeBrowser.diff
     # added for Qt 5.7.1:
     patchfiles-append \
                     kservice/patch-skip-applications.diff \
                     kservice/patch-no-delete-applications.diff
-    # https://git.reviewboard.kde.org/r/129733/
+    # https://commits.kde.org/kservice/10a07fcb26f8e49f3862edcfbdcfe21f535a8926
     patchfiles-append \
-                    kservice/patch-kservice-dontfollow-symlinks.patch
+                    kservice/patch-kservice-silence-qwarning.diff
     post-patch {
         reinplace "s|@APPMENUPREFIX@|kf5-|g" ${worksrcpath}/src/sycoca/vfolder_menu.cpp
     }
@@ -1640,7 +1814,8 @@ subport kf5-ktexteditor {
     depends_build-append \
                     path:bin/perl5:perl5
     depends_lib-append \
-                    port:libgit2
+                    port:libgit2 \
+                    port:editorconfig-core-c
     kf5.depends_qt5_components \
                     qtscript qtxmlpatterns
     kf5.depends_frameworks \
@@ -1679,11 +1854,11 @@ subport kf5-ktexteditor {
     # fix a confusing alert message
     patchfiles-append \
                     ktexteditor/patch-ktexteditor-mod-message.diff
-    if {[vercmp ${version} 5.27.0] <= 0} {
-        post-destroot {
-            xinstall -m 644 ${filespath}/ktexteditor/macports.xml ${destroot}${prefix}/share/katepart5/syntax/
-        }
-    }
+#     # contextmenu optimisation (in testing)
+#     patchfiles-append \
+#                     ktexteditor/patch-ktexteditor-contextmenu.diff
+    patchfiles-append \
+                    ktexteditor/patch-ktexteditor-no-accidental-zoom2.diff
 }
 
 subport kf5-ktextwidgets {
@@ -1795,9 +1970,6 @@ subport kf5-kxmlgui {
                     kconfig kconfigwidgets kcoreaddons kglobalaccel \
                     ki18n kiconthemes kitemviews ktextwidgets \
                     kwidgetsaddons kwindowsystem
-    # https://commits.kde.org/kxmlgui/a1a41bd9bdbec3e0eb45e6e2edff5292ec477db6
-    patchfiles-append \
-                    patch-kxmlgui-kmainwindow-event.diff
 }
 
 subport kf5-kxmlrpcclient {
@@ -1889,9 +2061,9 @@ subport kf5-frameworkintegration-devel {
     set kf5.framework \
                     frameworkintegration
     fetch.type      git
-#     v5.29.0-7-g1d95d47
-    git.branch      1d95d478cf26b5aed3a702f839a72447e83b1c01
-    version         ${version}.7
+#     v5.32.0-2-gcf5fa12
+    git.branch      cf5fa12932c4f9886e2129650bc67963ee8cfd6f
+    version         ${version}.2
     kf5.depends_frameworks \
                     kconfig kconfigwidgets kiconthemes knewstuff \
                     knotifications kpackage kwidgetsaddons
@@ -2008,9 +2180,9 @@ subport kf5-kdelibs4support-devel {
     # change the type of framework to "portingAid"
     kf5.is_portingAid
     fetch.type      git
-    git.branch      9136b0ca75d7d14518ed8817ba18055267b1bbdb
-#     v5.2.0-242-g9136b0c
-    version         ${version}.5.2.0.242
+    git.branch      c2fbab94b030e16d925c0f09c0bb6dc0d888595b
+#     v5.2.0-277-gc2fbab9
+    version         ${version}.5.2.0.277
     # call the function that will take care of resetting the rest
     kf5.set_project \
                     kdelibs4support
@@ -2047,9 +2219,6 @@ subport kf5-kdelibs4support-devel {
                     kdelibs4support/patch-kdelibs4supp-qosmac=osx.diff \
                     kdelibs4support/patch-kdelibs4supp-correct-menuroles-kaction.diff \
                     kdelibs4support/patch-kdelibs4supp-correct-fileshareset-install.diff
-#     # https://git.reviewboard.kde.org/r/126308
-#     patchfiles-append \
-#                     patch-kdelibs4supp-kpbutton-noshowicon.diff
     # https://git.reviewboard.kde.org/r/126309/
     patchfiles-append \
                     kdelibs4support/patch-kdelibs4supp-backtrace-demangle.diff
@@ -2283,6 +2452,7 @@ subport kf5-tier3-frameworks {
                     knewstuff knotifyconfig kparts kpeople plasma-framework \
                     kservice ktexteditor ktextwidgets kwallet kxmlgui kxmlrpcclient \
                     krunner
+    # TODO: add kirigami once it's officially a framework with a release version.
     # kf5-baloo kf5-kactivities kf5-kbookmarks kf5-kcmutils kf5-kconfigwidgets kf5-kdeclarative kf5-kded kf5-kdesignerplugin kf5-kdesu kf5-kdewebkit kf5-kemoticons kf5-kglobalaccel kf5-kiconthemes kf5-kinit kf5-kio kf5-knewstuff kf5-knotifyconfig kf5-kparts kf5-kpeople kf5-plasma-framework kf5-kservice kf5-ktexteditor kf5-ktextwidgets kf5-kwallet kf5-kxmlgui kf5-kxmlrpcclient kf5-krunner
     # in build order:
     # kf5-kconfigwidgets kf5-kiconthemes kf5-kservice kf5-kglobalaccel kf5-ktextwidgets kf5-kxmlgui kf5-kbookmarks kf5-kwallet kf5-kio kf5-baloo kf5-kactivities kf5-kdeclarative kf5-kcmutils kf5-kinit kf5-kded kf5-kparts kf5-kdewebkit kf5-kdesignerplugin kf5-kdesu kf5-kemoticons kf5-knewstuff kf5-knotifyconfig kf5-kpeople kf5-plasma-framework kf5-ktexteditor kf5-kxmlrpcclient kf5-krunner
