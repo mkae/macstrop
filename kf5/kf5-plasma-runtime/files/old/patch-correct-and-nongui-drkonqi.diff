@@ -1,0 +1,164 @@
+diff --git drkonqi/CMakeLists.txt drkonqi/CMakeLists.txt
+index deb8c40..cdae1d4 100644
+--- drkonqi/CMakeLists.txt
++++ drkonqi/CMakeLists.txt
+@@ -83,6 +83,7 @@ ki18n_wrap_ui(drkonqi_SRCS
+ )
+ 
+ add_executable(drkonqi ${drkonqi_SRCS})
++ecm_mark_nongui_executable(drkonqi)
+ 
+ target_compile_definitions(drkonqi PRIVATE -DPROJECT_VERSION="${PROJECT_VERSION}")
+ 
+diff --git drkonqi/bugzillaintegration/bugzillalib.cpp drkonqi/bugzillaintegration/bugzillalib.cpp
+index 802c5fb..70bd3eb 100644
+--- drkonqi/bugzillaintegration/bugzillalib.cpp
++++ drkonqi/bugzillaintegration/bugzillalib.cpp
+@@ -145,7 +145,7 @@ void BugzillaManager::callBugzilla(const char* method, const char* id,
+     m_xmlRpcClient->call(QLatin1String(method), args,
+             this, SLOT(callMessage(QList<QVariant>,QVariant)),
+             this, SLOT(callFault(int,QString,QVariant)),
+-            QString::fromAscii(id));
++            QLatin1String(id));
+ }
+ // END Generic call to Bugzilla
+ 
+@@ -246,7 +246,7 @@ void BugzillaManager::attachTextToReport(const QString & text, const QString & f
+     args.insert(QLatin1String("file_name"), filename);
+     args.insert(QLatin1String("summary"), summary);
+     args.insert(QLatin1String("comment"), comment);
+-    args.insert(QLatin1String("content_type"), QString::fromAscii("text/plain"));
++    args.insert(QLatin1String("content_type"), QLatin1String("text/plain"));
+ 
+     //data needs to be a QByteArray so that it is encoded in base64 (query.cpp:246)
+     args.insert(QLatin1String("data"), text.toUtf8());
+diff --git drkonqi/bugzillaintegration/reportassistantpages_bugzilla.cpp drkonqi/bugzillaintegration/reportassistantpages_bugzilla.cpp
+index e60fb14..e9d4440 100644
+--- drkonqi/bugzillaintegration/reportassistantpages_bugzilla.cpp
++++ drkonqi/bugzillaintegration/reportassistantpages_bugzilla.cpp
+@@ -841,23 +841,24 @@ UnhandledErrorDialog::UnhandledErrorDialog(QWidget * parent, const QString & err
+ void UnhandledErrorDialog::saveErrorMessage()
+ {
+     QString defaultName = QLatin1String("drkonqi-unhandled-bugzilla-error.html");
+-    QWeakPointer<QFileDialog> dlg = new QFileDialog(this);
+-    dlg.data()->selectFile(defaultName);
+-    dlg.data()->setWindowTitle(i18nc("@title:window","Select Filename"));
+-    dlg.data()->setAcceptMode(QFileDialog::AcceptSave);
+-    dlg.data()->setFileMode(QFileDialog::AnyFile);
+-    dlg.data()->setConfirmOverwrite(true);
+-    if ( dlg.data()->exec() )
++    QFileDialog dlg(this);
++    dlg.selectFile(defaultName);
++    dlg.setWindowTitle(i18nc("@title:window","Select Filename"));
++    dlg.setAcceptMode(QFileDialog::AcceptSave);
++    dlg.setFileMode(QFileDialog::AnyFile);
++    dlg.setConfirmOverwrite(true);
++
++    if ( dlg.exec() == QDialog::Accepted )
+     {
+-        if (dlg.isNull()) {
+-            //Dialog closed externally (ex. via DBus)
+-            return;
+-        }
++// ??!!
++//         if (dlg.isNull()) {
++//             //Dialog closed externally (ex. via DBus)
++//             return;
++//         }
+ 
+         QUrl fileUrl;
+-        if(!dlg.data()->selectedUrls().isEmpty())
+-            fileUrl = dlg.data()->selectedUrls().first();
+-        delete dlg.data();
++        if(!dlg.selectedUrls().isEmpty())
++            fileUrl = dlg.selectedUrls().first();
+ 
+         if (fileUrl.isValid()) {
+             QTemporaryFile tf;
+@@ -878,8 +879,6 @@ void UnhandledErrorDialog::saveErrorMessage()
+             }
+         }
+     }
+-    else
+-        delete dlg.data();
+ 
+ }
+ 
+diff --git drkonqi/bugzillaintegration/reportassistantpages_bugzilla_duplicates.cpp drkonqi/bugzillaintegration/reportassistantpages_bugzilla_duplicates.cpp
+index 4f8f4ea..6a4b44f 100644
+--- drkonqi/bugzillaintegration/reportassistantpages_bugzilla_duplicates.cpp
++++ drkonqi/bugzillaintegration/reportassistantpages_bugzilla_duplicates.cpp
+@@ -57,8 +57,8 @@ BugzillaDuplicatesPage::BugzillaDuplicatesPage(ReportAssistantDialog * parent):
+     connect(ui.m_bugListWidget, &QTreeWidget::itemSelectionChanged, this, &BugzillaDuplicatesPage::itemSelectionChanged);
+ 
+     QHeaderView * header = ui.m_bugListWidget->header();
+-    header->setResizeMode(0, QHeaderView::ResizeToContents);
+-    header->setResizeMode(1, QHeaderView::Interactive);
++    header->setSectionResizeMode(0, QHeaderView::ResizeToContents);
++    header->setSectionResizeMode(1, QHeaderView::Interactive);
+ 
+     //Create manual bug report entry (first one)
+     QTreeWidgetItem * customBugItem = new QTreeWidgetItem(
+@@ -464,7 +464,7 @@ void BugzillaDuplicatesPage::itemClicked(QTreeWidgetItem * item, int col)
+     int bugNumber = 0;
+     if (item->data(0, Qt::UserRole) == QLatin1String("custom")) {
+         bool ok = false;
+-        bugNumber = QInputDialog::getInteger(this,
++        bugNumber = QInputDialog::getInt(this,
+                     i18nc("@title:window", "Enter a custom bug report number"),
+                     i18nc("@label", "Enter the number of the bug report you want to check"),
+                     0, 0, 1000000, 1, &ok);
+diff --git drkonqi/drkonqi.cpp drkonqi/drkonqi.cpp
+index b12c118..236e925 100644
+--- drkonqi/drkonqi.cpp
++++ drkonqi/drkonqi.cpp
+@@ -41,7 +41,7 @@
+ */
+ #include "drkonqi.h"
+ 
+-#include <QtCore/QWeakPointer>
++// #include <QtCore/QWeakPointer>
+ #include <QtCore/QTextStream>
+ #include <QtCore/QTimerEvent>
+ #include <QtCore/QTemporaryFile>
+@@ -166,24 +166,26 @@ void DrKonqi::saveReport(const QString & reportText, QWidget *parent)
+     } else {
+         QString defname = getSuggestedKCrashFilename(crashedApplication());
+ 
+-        QWeakPointer<QFileDialog> dlg = new QFileDialog(parent, defname);
+-        dlg.data()->selectFile(defname);
+-        dlg.data()->setWindowTitle(i18nc("@title:window","Select Filename"));
+-        dlg.data()->setAcceptMode(QFileDialog::AcceptSave);
+-        dlg.data()->setFileMode(QFileDialog::AnyFile);
+-        dlg.data()->setConfirmOverwrite(true);
+-        dlg.data()->exec();
+-
+-        if (dlg.isNull()) {
+-            //Dialog is invalid, it was probably deleted (ex. via DBus call)
+-            //return and do not crash
++        QFileDialog dlg(parent, defname);
++        dlg.selectFile(defname);
++        dlg.setWindowTitle(i18nc("@title:window","Select Filename"));
++        dlg.setAcceptMode(QFileDialog::AcceptSave);
++        dlg.setFileMode(QFileDialog::AnyFile);
++        dlg.setConfirmOverwrite(true);
++        if (dlg.exec() != QDialog::Accepted) {
+             return;
+         }
+ 
++// when using QWeakPointer<QFileDialog> dlg, the code did this check - is that really a possible occurrence?
++//         if (dlg.isNull()) {
++//             //Dialog is invalid, it was probably deleted (ex. via DBus call)
++//             //return and do not crash
++//             return;
++//         }
++
+         QUrl fileUrl;
+-        if(!dlg.data()->selectedUrls().isEmpty())
+-            fileUrl = dlg.data()->selectedUrls().first();
+-        delete dlg.data();
++        if(!dlg.selectedUrls().isEmpty())
++            fileUrl = dlg.selectedUrls().first();
+ 
+         if (fileUrl.isValid()) {
+             QTemporaryFile tf;

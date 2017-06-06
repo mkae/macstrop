@@ -1,0 +1,16 @@
+diff --git examples/android/CMakeLists.txt examples/android/CMakeLists.txt
+index 3fe9d90..ab90942 100644
+--- examples/android/CMakeLists.txt
++++ examples/android/CMakeLists.txt
+@@ -1,9 +1,11 @@
++include(ECMAddAppIcon)
+ 
+ set(kirigamigallery_SRCS
+     main.cpp
+     )
+ 
+ qt5_add_resources(RESOURCES resources.qrc)
++ecm_add_app_icon(kirigamigallery_SRCS ICONS "${CMAKE_CURRENT_SOURCE_DIR}/kirigami.svgz")
+ 
+ add_executable(kirigamigallery ${kirigamigallery_SRCS} ${RESOURCES})
+ target_link_libraries(kirigamigallery Qt5::Core  Qt5::Qml Qt5::Quick Qt5::Svg)

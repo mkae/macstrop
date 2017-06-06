@@ -1,0 +1,660 @@
+This is the combined patch to make DrKonqi functional on Mac
+https://phabricator.kde.org/D4929
+
+diff --git a/drkonqi/CMakeLists.txt b/drkonqi/CMakeLists.txt
+index cdae1d49a9113987f370a4d49d2bce5fbf5030e8..6eed275a5d9e58149a019a7303a9733d19d6d008 100644
+--- a/drkonqi/CMakeLists.txt
++++ b/drkonqi/CMakeLists.txt
+@@ -112,5 +112,10 @@ if (HAVE_X11)
+         Qt5::X11Extras
+     )
+ endif()
++if (APPLE)
++    target_link_libraries(drkonqi
++        KF5::WindowSystem
++    )
++endif()
+ 
+ install(TARGETS drkonqi DESTINATION ${KDE_INSTALL_LIBEXECDIR})
+diff --git a/drkonqi/aboutbugreportingdialog.cpp b/drkonqi/aboutbugreportingdialog.cpp
+index edbdf83bd543a38d38728dc8ac7eac90145cf26e..4e605b1cf0600ea4df64cce5cc8f54102d841a1f 100644
+--- a/drkonqi/aboutbugreportingdialog.cpp
++++ b/drkonqi/aboutbugreportingdialog.cpp
+@@ -36,7 +36,7 @@ AboutBugReportingDialog::AboutBugReportingDialog(QWidget * parent):
+ {
+     setAttribute(Qt::WA_DeleteOnClose, true);
+ 
+-    setWindowIcon(QIcon::fromTheme(QStringLiteral("help-hint")));
++    setWindowIcon(QIcon::fromTheme(QStringLiteral("help-hint"), windowIcon()));
+     setWindowTitle(i18nc("@title title of the dialog", "About Bug Reporting - Help"));
+ 
+     QVBoxLayout* layout = new QVBoxLayout(this);
+diff --git a/drkonqi/backtracegenerator.cpp b/drkonqi/backtracegenerator.cpp
+index 5215585d33685639eabe96b984f798ffb9329137..713ed694783366c37af7de5cd978d090ba749bdb 100644
+--- a/drkonqi/backtracegenerator.cpp
++++ b/drkonqi/backtracegenerator.cpp
+@@ -37,7 +37,8 @@
+ BacktraceGenerator::BacktraceGenerator(const Debugger & debugger, QObject *parent)
+         : QObject(parent),
+           m_debugger(debugger), m_proc(NULL),
+-          m_temp(NULL), m_state(NotLoaded)
++          m_temp(NULL), m_state(NotLoaded),
++          m_lldbDetached(false)
+ {
+     m_parser = BacktraceParser::newParser(m_debugger.codeName(), this);
+     m_parser->connectToGenerator(this);
+@@ -56,6 +57,8 @@ BacktraceGenerator::~BacktraceGenerator()
+         m_proc->terminate();
+         if (!m_proc->waitForFinished(10000)) {
+             m_proc->kill();
++            // NB: lldb can get stuck here, a waitForFinished() without timeout is safe
++            // only if lldbrc's BatchCommand ends with something like "\nimport os ; os._exit(0)\nquit"
+             m_proc->waitForFinished();
+         }
+         delete m_proc;
+@@ -95,9 +98,17 @@ bool BacktraceGenerator::start()
+     *m_proc << KShell::splitArgs(str);
+     m_proc->setOutputChannelMode(KProcess::OnlyStdoutChannel);
+     m_proc->setNextOpenMode(QIODevice::ReadWrite | QIODevice::Text);
++    // check if the debugger should take its input from a file we'll generate,
++    // and take the appropriate steps if so
++    QString stdinFile = m_debugger.backendValueOfParameter(QStringLiteral("ExecInputFile"));
++    Debugger::expandString(stdinFile, Debugger::ExpansionUsageShell, m_temp->fileName());
++    if (!stdinFile.isEmpty() && QFile::exists(stdinFile)) {
++        m_proc->setStandardInputFile(stdinFile);
++    }
+     connect(m_proc, &KProcess::readyReadStandardOutput, this, &BacktraceGenerator::slotReadInput);
+     connect(m_proc, static_cast<void (KProcess::*)(int, QProcess::ExitStatus)>(&KProcess::finished), this, &BacktraceGenerator::slotProcessExited);
+ 
++    m_lldbDetached = false;
+     m_proc->start();
+     if (!m_proc->waitForStarted()) {
+         //we mustn't keep these around...
+@@ -116,15 +127,34 @@ bool BacktraceGenerator::start()
+ 
+ void BacktraceGenerator::slotReadInput()
+ {
++    if (m_lldbDetached) {
++        return;
++    }
++
+     // we do not know if the output array ends in the middle of an utf-8 sequence
+     m_output += m_proc->readAllStandardOutput();
+ 
+     int pos;
+-    while ((pos = m_output.indexOf('\n')) != -1) {
++    while ((pos = m_output.indexOf('\n')) != -1 && m_proc->state() == QProcess::Running) {
+         QString line = QString::fromLocal8Bit(m_output, pos + 1);
+         m_output.remove(0, pos + 1);
+ 
+         emit newLine(line);
++        line = line.simplified();
++        if (line.startsWith(QLatin1String("Process ")) && line.endsWith(QLatin1String(" detached"))) {
++            // Anything following this line doesn't interest us and shouldn't show in the backtrace.
++            m_lldbDetached = true;
++            // Also, lldb has been known to turn into a zombie instead of exitting, thereby blocking us.
++            // Recent versions should react correctly to the quit or else to the Python os._exit() commands
++            // in lldbrc and we will thus assume that the application has terminated.
++            // (see also http://stackoverflow.com/questions/26267289/how-can-i-exit-lldb-after-running-commands-with-o)
++            if (!m_proc->waitForFinished(500)) {
++                m_proc->kill();
++            }
++            slotProcessExited(0, QProcess::NormalExit);
++            // either way we should stop reading now.
++            return;
++        }
+     }
+ }
+ 
+diff --git a/drkonqi/backtracegenerator.h b/drkonqi/backtracegenerator.h
+index f3dc268c7b89dddd6db13014e70ab9718371a209..4ac1decd8cb07995ccde601ac04bfcff6021712b 100644
+--- a/drkonqi/backtracegenerator.h
++++ b/drkonqi/backtracegenerator.h
+@@ -84,6 +84,7 @@ private:
+     State             m_state;
+     BacktraceParser * m_parser;
+     QString           m_parsedBacktrace;
++    bool              m_lldbDetached;
+ 
+ #ifdef BACKTRACE_PARSER_DEBUG
+     BacktraceParser * m_debugParser;
+diff --git a/drkonqi/backtracewidget.cpp b/drkonqi/backtracewidget.cpp
+index 3218e7988ee37fd90ad28472bb73d9c0d10951a7..9a0aea71308c8d9bfbc77e33789d7419286f4093 100644
+--- a/drkonqi/backtracewidget.cpp
++++ b/drkonqi/backtracewidget.cpp
+@@ -205,6 +205,9 @@ void BacktraceWidget::loadData()
+ 
+         // scroll to crash
+         QTextCursor crashCursor = ui.m_backtraceEdit->document()->find(QStringLiteral("[KCrash Handler]"));
++        if (crashCursor.isNull()) {
++            crashCursor = ui.m_backtraceEdit->document()->find(QStringLiteral("KCrash::defaultCrashHandler"));
++        }
+         if (!crashCursor.isNull()) {
+             crashCursor.movePosition(QTextCursor::Up, QTextCursor::MoveAnchor);
+             ui.m_backtraceEdit->verticalScrollBar()->setValue(ui.m_backtraceEdit->cursorRect(crashCursor).top());
+diff --git a/drkonqi/bugzillaintegration/reportassistantdialog.cpp b/drkonqi/bugzillaintegration/reportassistantdialog.cpp
+index a5d7eecaa5bfd644f064e90a22acc291c7416ebc..8d6f53f9c2b42d77873e4a6908e05f20b9d79c02 100644
+--- a/drkonqi/bugzillaintegration/reportassistantdialog.cpp
++++ b/drkonqi/bugzillaintegration/reportassistantdialog.cpp
+@@ -50,7 +50,7 @@ ReportAssistantDialog::ReportAssistantDialog(QWidget * parent) :
+ 
+     //Set window properties
+     setWindowTitle(i18nc("@title:window","Crash Reporting Assistant"));
+-    setWindowIcon(QIcon::fromTheme(QStringLiteral("tools-report-bug")));
++    setWindowIcon(QIcon::fromTheme(QStringLiteral("tools-report-bug"), windowIcon()));
+ 
+     connect(this, &ReportAssistantDialog::currentPageChanged, this, &ReportAssistantDialog::currentPageChanged_slot);
+     connect(button(QDialogButtonBox::Help), &QPushButton::clicked, this, &ReportAssistantDialog::showHelp);
+diff --git a/drkonqi/data/AppleTerminal b/drkonqi/data/AppleTerminal
+new file mode 100644
+index 0000000000000000000000000000000000000000..9824cfa36be6abcb29cd872a2ca516efbc97a996
+--- /dev/null
++++ b/drkonqi/data/AppleTerminal
+@@ -0,0 +1,24 @@
++#!/bin/sh
++
++SCRIPT="${TMPDIR}/RunInTerminal.$$.sh"
++
++CleanUp() {
++	rm -f "${SCRIPT}"
++}
++
++trap CleanUp 0
++trap CleanUp 1
++trap CleanUp 2
++trap CleanUp 15
++
++if [ $# != 0 ] ;then
++	echo "$@" > "${SCRIPT}"
++else
++	cat - > "${SCRIPT}"
++fi
++chmod 700 "${SCRIPT}"
++
++echo "Running the requested command(s) in a new Terminal instance"
++echo "Remember to quit the Terminal application!"
++
++open -W -n -F -a Terminal.app "${SCRIPT}"
+diff --git a/drkonqi/data/CMakeLists.txt b/drkonqi/data/CMakeLists.txt
+index 43df28e469ae970ac7da32106a1a4b7a372fd174..b866a2285e27b8ab211dda8a8cd88714610da737 100644
+--- a/drkonqi/data/CMakeLists.txt
++++ b/drkonqi/data/CMakeLists.txt
+@@ -1,2 +1,9 @@
+ install(FILES mappings DESTINATION ${KDE_INSTALL_DATADIR}/drkonqi)
+-install(DIRECTORY debuggers DESTINATION ${KDE_INSTALL_DATADIR}/drkonqi PATTERN ".svn" EXCLUDE)
++install(DIRECTORY debuggers/internal DESTINATION ${KDE_INSTALL_DATADIR}/drkonqi/debuggers PATTERN ".svn" EXCLUDE)
++if(APPLE)
++    # note the trailing slash for external.mac; this copies the contents into the destination dir instead of external.mac itself!
++    install(DIRECTORY debuggers/external.mac/ DESTINATION ${KDE_INSTALL_DATADIR}/drkonqi/debuggers/external PATTERN ".svn" EXCLUDE)
++    install(PROGRAMS AppleTerminal DESTINATION ${KDE_INSTALL_BINDIR})
++else()
++    install(DIRECTORY debuggers/external DESTINATION ${KDE_INSTALL_DATADIR}/drkonqi/debuggers PATTERN ".svn" EXCLUDE)
++endif()
+diff --git a/drkonqi/data/debuggers/external.mac/gdbrc b/drkonqi/data/debuggers/external.mac/gdbrc
+new file mode 100644
+index 0000000000000000000000000000000000000000..2ef396a4a9ca543861eb93127c47d00b35059921
+--- /dev/null
++++ b/drkonqi/data/debuggers/external.mac/gdbrc
+@@ -0,0 +1,78 @@
++[General]
++Name=gdb
++Name[bg]=gdb
++Name[bn]=gdb
++Name[bs]=gDB
++Name[ca]=gdb
++Name[ca@valencia]=gdb
++Name[cs]=gdb
++Name[csb]=gdb
++Name[da]=gdb
++Name[de]=gdb
++Name[el]=gdb
++Name[en_GB]=gdb
++Name[eo]=gdb
++Name[es]=gdb
++Name[et]=gdb
++Name[eu]=gdb
++Name[fa]=gdb
++Name[fi]=gdb
++Name[fr]=gdb
++Name[fy]=gdb
++Name[ga]=gdb
++Name[gl]=gdb
++Name[gu]=gdb
++Name[he]=gdb
++Name[hi]=gdb
++Name[hr]=gdb
++Name[hu]=gdb
++Name[ia]=gdb
++Name[id]=gdb
++Name[is]=gdb
++Name[it]=gdb
++Name[ja]=gdb
++Name[ka]=gdb
++Name[kk]=gdb
++Name[km]=gdb
++Name[kn]=gdb
++Name[ko]=gdb
++Name[lt]=gdb
++Name[lv]=gdb
++Name[mai]=gdb
++Name[mk]=gdb
++Name[ml]=ജിഡിബി
++Name[mr]=gdb
++Name[nb]=gdb
++Name[nds]=GDB
++Name[nl]=gdb
++Name[nn]=gdb
++Name[pa]=gdb
++Name[pl]=gdb
++Name[pt]=gdb
++Name[pt_BR]=gdb
++Name[ro]=gdb
++Name[ru]=gdb
++Name[si]=gdb
++Name[sk]=gdb
++Name[sl]=gdb
++Name[sr]=ГДБ
++Name[sr@ijekavian]=ГДБ
++Name[sr@ijekavianlatin]=GDB
++Name[sr@latin]=GDB
++Name[sv]=gdb
++Name[tg]=gdb
++Name[th]=gdb
++Name[tr]=gdb
++Name[ug]=gdb
++Name[uk]=gdb
++Name[vi]=gdb
++Name[wa]=gdb
++Name[x-test]=xxgdbxx
++Name[zh_CN]=gdb
++Name[zh_TW]=gdb
++TryExec=gdb
++Backends=KCrash
++
++[KCrash]
++Exec=AppleTerminal gdb -nw -p %pid %execpath
++Terminal=true
+diff --git a/drkonqi/data/debuggers/external.mac/kdbgrc b/drkonqi/data/debuggers/external.mac/kdbgrc
+new file mode 100644
+index 0000000000000000000000000000000000000000..aa145143d0548c96c602f220f2156dab4d1bad2c
+--- /dev/null
++++ b/drkonqi/data/debuggers/external.mac/kdbgrc
+@@ -0,0 +1,77 @@
++[General]
++Name=kdbg
++Name[bg]=kdbg
++Name[bn]=kdbg
++Name[bs]=kdbg
++Name[ca]=kdbg
++Name[ca@valencia]=kdbg
++Name[cs]=kdbg
++Name[csb]=kdbg
++Name[da]=kdbg
++Name[de]=kdbg
++Name[el]=kdbg
++Name[en_GB]=kdbg
++Name[eo]=kdbg
++Name[es]=kdbg
++Name[et]=kdbg
++Name[eu]=kdbg
++Name[fa]=kdbg
++Name[fi]=kdbg
++Name[fr]=kdbg
++Name[fy]=kdbg
++Name[ga]=kdbg
++Name[gl]=kdbg
++Name[gu]=kdbg
++Name[he]=kdbg
++Name[hi]=kdbg
++Name[hr]=kdbg
++Name[hu]=kdbg
++Name[ia]=kdbg
++Name[id]=kdbg
++Name[is]=kdbg
++Name[it]=kdbg
++Name[ja]=kdbg
++Name[ka]=kdbg
++Name[kk]=kdbg
++Name[km]=kdbg
++Name[kn]=kdbg
++Name[ko]=kdbg
++Name[lt]=kdbg
++Name[lv]=kdbg
++Name[mai]=kdbg
++Name[mk]=kdbg
++Name[ml]=കെഡിബിജി
++Name[mr]=kdbg
++Name[nb]=kdbg
++Name[nds]=KDbg
++Name[nl]=kdbg
++Name[nn]=kdbg
++Name[pa]=kdbg
++Name[pl]=kdbg
++Name[pt]=kdbg
++Name[pt_BR]=kdbg
++Name[ro]=kdbg
++Name[ru]=kdbg
++Name[si]=kdbg
++Name[sk]=kdbg
++Name[sl]=kdbg
++Name[sr]=Кдбг
++Name[sr@ijekavian]=Кдбг
++Name[sr@ijekavianlatin]=KDbg
++Name[sr@latin]=KDbg
++Name[sv]=kdbg
++Name[tg]=kdbg
++Name[th]=kdbg
++Name[tr]=kdbg
++Name[ug]=kdbg
++Name[uk]=kdbg
++Name[vi]=kdbg
++Name[wa]=kdbg
++Name[x-test]=xxkdbgxx
++Name[zh_CN]=kdbg
++Name[zh_TW]=kdbg
++TryExec=kdbg
++Backends=KCrash
++
++[KCrash]
++Exec=kdbg -p %pid %execpath
+diff --git a/drkonqi/data/debuggers/external.mac/lldbrc b/drkonqi/data/debuggers/external.mac/lldbrc
+new file mode 100644
+index 0000000000000000000000000000000000000000..65d7945b9858755e77df2ebd48df0e830c91dfb0
+--- /dev/null
++++ b/drkonqi/data/debuggers/external.mac/lldbrc
+@@ -0,0 +1,8 @@
++[General]
++Name=lldb
++TryExec=lldb
++Backends=KCrash
++
++[KCrash]
++Exec=AppleTerminal lldb -p %pid
++Terminal=true
+diff --git a/drkonqi/data/debuggers/external/lldbrc b/drkonqi/data/debuggers/external/lldbrc
+new file mode 100644
+index 0000000000000000000000000000000000000000..c8ef63b991c2b6b6ef38f9ee193c1ba280980b09
+--- /dev/null
++++ b/drkonqi/data/debuggers/external/lldbrc
+@@ -0,0 +1,8 @@
++[General]
++Name=lldb
++TryExec=lldb
++Backends=KCrash
++
++[KCrash]
++Exec=konsole --nofork -e lldb -p %pid
++Terminal=true
+diff --git a/drkonqi/data/debuggers/internal/lldbrc b/drkonqi/data/debuggers/internal/lldbrc
+new file mode 100644
+index 0000000000000000000000000000000000000000..79007fdc9dc476eb5b966b9628c12eadf665176c
+--- /dev/null
++++ b/drkonqi/data/debuggers/internal/lldbrc
+@@ -0,0 +1,9 @@
++[General]
++Name=lldb
++TryExec=lldb
++Backends=KCrash
++
++[KCrash]
++Exec=lldb -p %pid
++ExecInputFile=%tempfile
++BatchCommands=set term-width 200\nthread info\nbt all\ndetach\nscript import os ; os._exit(0)\nquit
+diff --git a/drkonqi/debugger.cpp b/drkonqi/debugger.cpp
+index 04c00831e101aafb234898212f7d84543372056d..b4b504f416cf453a8be8a5088a9544e3b9767ff1 100644
+--- a/drkonqi/debugger.cpp
++++ b/drkonqi/debugger.cpp
+@@ -104,6 +104,15 @@ bool Debugger::runInTerminal() const
+     }
+ }
+ 
++QString Debugger::backendValueOfParameter(const QString &key) const
++{
++    if (!isValid() || !m_config->hasGroup(m_backend)) {
++        return QString();
++    } else {
++        return m_config->group(m_backend).readEntry(key, QString());
++    }
++}
++
+ //static
+ void Debugger::expandString(QString & str, ExpandStringUsage usage, const QString & tempFile)
+ {
+diff --git a/drkonqi/debugger.h b/drkonqi/debugger.h
+index 69cf95863213c804e3d8bf3c9d18b887cad89811..932cc7f87cfaa468417ac7d0e4e758fe19ee7c35 100644
+--- a/drkonqi/debugger.h
++++ b/drkonqi/debugger.h
+@@ -70,6 +70,8 @@ public:
+     /** If this is an external debugger, it returns whether it should be run in a terminal or not */
+     bool runInTerminal() const;
+ 
++    /** Returns the value of the arbitrary configuration parameter @param key, or an empty QString if @param key isn't defined */
++    QString backendValueOfParameter(const QString &key) const;
+ 
+     enum ExpandStringUsage {
+         ExpansionUsagePlainText,
+diff --git a/drkonqi/drkonqibackends.cpp b/drkonqi/drkonqibackends.cpp
+index d02d3e942d4cb5a166efd69a854018fef39da2e5..b2c432e6ba1ac8d810fbcb983466dad718e2eb13 100644
+--- a/drkonqi/drkonqibackends.cpp
++++ b/drkonqi/drkonqibackends.cpp
+@@ -36,6 +36,10 @@
+ #include "backtracegenerator.h"
+ #include "drkonqi.h"
+ 
++#ifdef Q_OS_MACOS
++#include <AvailabilityMacros.h>
++#endif
++
+ AbstractDrKonqiBackend::~AbstractDrKonqiBackend()
+ {
+ }
+@@ -158,7 +162,12 @@ DebuggerManager *KCrashBackend::constructDebuggerManager()
+ {
+     QList<Debugger> internalDebuggers = Debugger::availableInternalDebuggers(QStringLiteral("KCrash"));
+     KConfigGroup config(KSharedConfig::openConfig(), "DrKonqi");
+-#ifndef Q_OS_WIN
++#if defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && __MAC_OS_X_VERSION_MAX_ALLOWED > 1070
++    // Gdb isn't available from OS X 10.8 onwards (and cannot work properly anyway);
++    // the lldb version on OS X 10.7 and earlier is subpar to the system gdb still available
++    // on those OS versions. Hence, only make lldb the default Mac debugger on 10.8+ .
++    QString defaultDebuggerName = config.readEntry("Debugger", QString("lldb"));
++#elif !defined(Q_OS_WIN)
+     QString defaultDebuggerName = config.readEntry("Debugger", QStringLiteral("gdb"));
+ #else
+     QString defaultDebuggerName = config.readEntry("Debugger", QString("kdbgwin"));
+diff --git a/drkonqi/drkonqidialog.cpp b/drkonqi/drkonqidialog.cpp
+index 64dd657905fd39e5066c480a8b38456b85557424..3e765e5dddfd4f935d05d1f01931e86a28abd648 100644
+--- a/drkonqi/drkonqidialog.cpp
++++ b/drkonqi/drkonqidialog.cpp
+@@ -54,7 +54,7 @@ DrKonqiDialog::DrKonqiDialog(QWidget * parent) :
+ 
+     //Setting dialog title and icon
+     setWindowTitle(DrKonqi::crashedApplication()->name());
+-    setWindowIcon(QIcon::fromTheme(QStringLiteral("tools-report-bug")));
++    setWindowIcon(QIcon::fromTheme(QStringLiteral("tools-report-bug"), windowIcon()));
+ 
+     QVBoxLayout* l = new QVBoxLayout(this);
+     m_tabWidget = new QTabWidget(this);
+diff --git a/drkonqi/main.cpp b/drkonqi/main.cpp
+index f5b6df77ec391b5906c605957234fdd4329fab6f..75050f1f66fc89dd74f575c6db196b6e7202cc03 100644
+--- a/drkonqi/main.cpp
++++ b/drkonqi/main.cpp
+@@ -36,6 +36,9 @@
+ #if HAVE_X11
+ #include <QX11Info>
+ #endif
++#ifdef Q_OS_MACOS
++#include <KWindowSystem>
++#endif
+ 
+ #include "drkonqi.h"
+ #include "drkonqidialog.h"
+@@ -79,7 +82,7 @@ int main(int argc, char* argv[])
+                          QStringLiteral("gkiagia@users.sourceforge.net"));
+     aboutData.addAuthor(i18nc("@info:credit","A. L. Spehr"), QString(),
+                          QStringLiteral("spehr@kde.org"));
+-    qa.setWindowIcon(QIcon::fromTheme(QStringLiteral("tools-report-bug")));
++    qa.setWindowIcon(QIcon::fromTheme(QStringLiteral("tools-report-bug"), qa.windowIcon()));
+ 
+     QCommandLineParser parser;
+     parser.setApplicationDescription(description);
+@@ -149,6 +152,9 @@ int main(int argc, char* argv[])
+         DrKonqiDialog *w = new DrKonqiDialog();
+         QObject::connect(w, &DrKonqiDialog::rejected, &qa, &QApplication::quit);
+         w->show();
++#ifdef Q_OS_MACOS
++        KWindowSystem::forceActiveWindow(w->winId());
++#endif
+     };
+ 
+     bool restarted = parser.isSet(restartedOption);
+diff --git a/drkonqi/parser/CMakeLists.txt b/drkonqi/parser/CMakeLists.txt
+index 0c16e559d7b6670fe282699b9d3b2dfcb3366137..c5accd545b3fd206cbbee692608c0b16dbe1315d 100644
+--- a/drkonqi/parser/CMakeLists.txt
++++ b/drkonqi/parser/CMakeLists.txt
+@@ -3,6 +3,7 @@ set(BACKTRACEPARSER_SRCS
+     backtraceparsergdb.cpp
+     backtraceparserkdbgwin.cpp
+     backtraceparsernull.cpp
++    backtraceparserlldb.cpp
+ )
+ 
+ add_library(drkonqi_backtrace_parser STATIC ${BACKTRACEPARSER_SRCS})
+diff --git a/drkonqi/parser/backtraceparser.cpp b/drkonqi/parser/backtraceparser.cpp
+index 23d27410a4dc48d4491d4e4b8978be4273332b2b..23f3f6edd1bfdbd6bef742268b66dcd1817f7098 100644
+--- a/drkonqi/parser/backtraceparser.cpp
++++ b/drkonqi/parser/backtraceparser.cpp
+@@ -18,6 +18,7 @@
+ #include "backtraceparser_p.h"
+ #include "backtraceparsergdb.h"
+ #include "backtraceparserkdbgwin.h"
++#include "backtraceparserlldb.h"
+ #include "backtraceparsernull.h"
+ #include <QtCore/QRegExp>
+ #include <QtCore/QMetaEnum>
+@@ -30,6 +31,8 @@ BacktraceParser *BacktraceParser::newParser(const QString & debuggerName, QObjec
+         return new BacktraceParserGdb(parent);
+     } else if (debuggerName == QLatin1String("kdbgwin")) {
+         return new BacktraceParserKdbgwin(parent);
++    } else if (debuggerName == QLatin1String("lldb")) {
++        return new BacktraceParserLldb(parent);
+     } else {
+         return new BacktraceParserNull(parent);
+     }
+@@ -198,6 +201,10 @@ static bool lineShouldBeIgnored(const BacktraceLine & line)
+         || line.functionName().startsWith(QLatin1String("*__GI_")) //glibc2.9 uses *__GI_ as prefix
+         || line.libraryName().contains(QStringLiteral("libpthread.so"))
+         || line.libraryName().contains(QStringLiteral("libglib-2.0.so"))
++#ifdef Q_OS_MACOS
++        || (line.libraryName().startsWith(QStringLiteral("libsystem_")) && line.libraryName().endsWith(QStringLiteral(".dylib")))
++        || line.libraryName().contains(QStringLiteral("Foundation`"))
++#endif
+         || line.libraryName().contains(QStringLiteral("ntdll.dll"))
+         || line.libraryName().contains(QStringLiteral("kernel32.dll"))
+         || line.functionName().contains(QStringLiteral("_tmain"))
+diff --git a/drkonqi/parser/backtraceparserlldb.cpp b/drkonqi/parser/backtraceparserlldb.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..48e0af12779f141b0d46cecdf6709e521fd4521b
+--- /dev/null
++++ b/drkonqi/parser/backtraceparserlldb.cpp
+@@ -0,0 +1,57 @@
++/*
++    Copyright (C) 2014 René J.V. Bertin <rjvbertin@gmail.com>
++
++    This program is free software; you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation; either version 2 of the License, or
++    (at your option) any later version.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License along
++    with this program; if not, write to the Free Software Foundation, Inc.,
++    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
++*/
++#include "backtraceparserlldb.h"
++#include "backtraceparser_p.h"
++
++//BEGIN BacktraceParserLldb
++
++class BacktraceLineLldb : public BacktraceLine
++{
++public:
++    BacktraceLineLldb(const QString &line);
++};
++
++BacktraceLineLldb::BacktraceLineLldb(const QString &line)
++    : BacktraceLine()
++{
++    d->m_line = line;
++    // For now we'll have faith that lldb provides useful information, and that it would
++    // be unwarranted to give it a rating of "MissingEverything".
++    d->m_rating = Good;
++}
++
++//END BacktraceLineLldb
++
++//BEGIN BacktraceParserLldb
++
++BacktraceParserLldb::BacktraceParserLldb(QObject *parent) : BacktraceParser(parent) {}
++
++BacktraceParserPrivate *BacktraceParserLldb::constructPrivate() const
++{
++    BacktraceParserPrivate *d = BacktraceParser::constructPrivate();
++    d->m_usefulness = MayBeUseful;
++    return d;
++}
++
++void BacktraceParserLldb::newLine(const QString &lineStr)
++{
++    d_ptr->m_linesList.append(BacktraceLineLldb(lineStr));
++}
++
++
++//END BacktraceParserLldb
+diff --git a/drkonqi/parser/backtraceparserlldb.h b/drkonqi/parser/backtraceparserlldb.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..26b0fe1347addb89149c6277c4dee0373ce72084
+--- /dev/null
++++ b/drkonqi/parser/backtraceparserlldb.h
+@@ -0,0 +1,37 @@
++/*
++    Copyright (C) 2014-2016 René J.V. Bertin <rjvbertin@gmail.com>
++
++    This program is free software; you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation; either version 2 of the License, or
++    (at your option) any later version.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License along
++    with this program; if not, write to the Free Software Foundation, Inc.,
++    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
++*/
++#ifndef BACKTRACEPARSERLLDB_H
++#define BACKTRACEPARSERLLDB_H
++
++#include "backtraceparser.h"
++
++class BacktraceParserLldb : public BacktraceParser
++{
++    Q_OBJECT
++    Q_DECLARE_PRIVATE(BacktraceParser)
++public:
++    explicit BacktraceParserLldb(QObject *parent = nullptr);
++
++protected Q_SLOTS:
++    void newLine(const QString & lineStr) override;
++
++protected:
++    virtual BacktraceParserPrivate *constructPrivate() const;
++};
++
++#endif // BACKTRACEPARSERLLDB_H

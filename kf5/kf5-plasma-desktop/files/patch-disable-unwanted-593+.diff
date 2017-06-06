@@ -1,0 +1,102 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 1e8ef25d..12a5123b 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -7,6 +7,12 @@ set(PROJECT_VERSION_MAJOR 5)
+ cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
+ set(QT_MIN_VERSION "5.5.0")
+ 
++if(APPLE)
++    option(PLASMA_DESKTOP_BUILD_ALL "Build the full set of desktop components" OFF)
++else()
++    option(PLASMA_DESKTOP_BUILD_ALL "Build the full set of desktop components" ON)
++endif()
++
+ find_package(ECM 0.0.11 REQUIRED NO_MODULE)
+ set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH} ${ECM_KDE_MODULE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
+ 
+@@ -51,16 +57,17 @@ find_package(KF5 ${KF5_MIN_VERSION} REQUIRED COMPONENTS
+     People
+     DBusAddons
+     Activities
+-    ActivitiesStats
+     Config
+ )
+ 
+-find_package(LibKWorkspace CONFIG REQUIRED)
+-find_package(LibTaskManager CONFIG REQUIRED)
+-find_package(KWinDBusInterface CONFIG REQUIRED)
+-find_package(ScreenSaverDBusInterface CONFIG REQUIRED)
+-find_package(KRunnerAppDBusInterface CONFIG REQUIRED)
+-find_package(KSMServerDBusInterface CONFIG REQUIRED)
++if(PLASMA_DESKTOP_BUILD_ALL)
++    find_package(LibKWorkspace CONFIG REQUIRED)
++    find_package(LibTaskManager CONFIG REQUIRED)
++    find_package(KWinDBusInterface CONFIG REQUIRED)
++    find_package(ScreenSaverDBusInterface CONFIG REQUIRED)
++    find_package(KRunnerAppDBusInterface CONFIG REQUIRED)
++    find_package(KSMServerDBusInterface CONFIG REQUIRED)
++endif()
+ find_package(KF5ItemModels CONFIG REQUIRED)
+ find_package(KF5Emoticons CONFIG REQUIRED)
+ 
+@@ -162,16 +169,20 @@ add_definitions(-DQT_NO_URL_CAST_FROM_STRING)
+ add_subdirectory(layout-templates)
+ 
+ add_subdirectory(doc)
+-add_subdirectory(runners)
+-add_subdirectory(containments)
+-add_subdirectory(toolboxes)
+-add_subdirectory(applets)
+-add_subdirectory(dataengines)
++if(PLASMA_DESKTOP_BUILD_ALL)
++    add_subdirectory(runners)
++    add_subdirectory(containments)
++    add_subdirectory(toolboxes)
++    add_subdirectory(applets)
++    add_subdirectory(dataengines)
++endif()
+ add_subdirectory(kcms)
+ add_subdirectory(knetattach)
+ add_subdirectory(attica-kde)
+-add_subdirectory(imports/activitymanager/)
+-add_subdirectory(solid-device-automounter)
++if(PLASMA_DESKTOP_BUILD_ALL)
++    add_subdirectory(imports/activitymanager/)
++    add_subdirectory(solid-device-automounter)
++endif()
+ if(X11_Xkb_FOUND AND XCB_XKB_FOUND)
+     add_subdirectory(kaccess)
+ endif()
+diff --git a/kcms/CMakeLists.txt b/kcms/CMakeLists.txt
+index c4dced21..16f5df44 100644
+--- a/kcms/CMakeLists.txt
++++ b/kcms/CMakeLists.txt
+@@ -20,18 +20,22 @@ endif()
+ 
+ add_subdirectory( access )
+ add_subdirectory( dateandtime )
+-add_subdirectory( autostart )
+-add_subdirectory( ksplash )
++if(PLASMA_DESKTOP_BUILD_ALL)
++    add_subdirectory( autostart )
++    add_subdirectory( ksplash )
+ 
+-add_subdirectory( launch )
++    add_subdirectory( launch )
++endif()
+ add_subdirectory( colors )
+ add_subdirectory( krdb )
+ add_subdirectory( style )
+ add_subdirectory( desktoptheme )
+ add_subdirectory( standard_actions )
+ add_subdirectory( keys )
+-add_subdirectory( ksmserver )
+-add_subdirectory( lookandfeel )
++if(PLASMA_DESKTOP_BUILD_ALL)
++    add_subdirectory( ksmserver )
++    add_subdirectory( lookandfeel )
++endif()
+ 
+ add_subdirectory( hardware )
+ add_subdirectory( desktoppaths )

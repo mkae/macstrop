@@ -1,0 +1,59 @@
+diff --git a/kerfuffle/CMakeLists.txt b/kerfuffle/CMakeLists.txt
+index 8f846f6e752e0ce8f363e5d40c66cfa93bb70944..49fb096ba7c960e33666c91352bfcab8f1aedc1c 100644
+--- a/kerfuffle/CMakeLists.txt
++++ b/kerfuffle/CMakeLists.txt
+@@ -48,6 +48,14 @@ ecm_qt_declare_logging_category(kerfuffle_SRCS
+ add_library(kerfuffle SHARED ${kerfuffle_SRCS})
+ generate_export_header(kerfuffle BASE_NAME kerfuffle)
+ 
++if (APPLE)
++   target_compile_definitions(kerfuffle PRIVATE -DDEPENDENCY_TOOL="otool")
++   target_compile_definitions(kerfuffle PRIVATE -DDEPENDENCY_TOOL_ARGS="-L")
++else()
++   target_compile_definitions(kerfuffle PRIVATE -DDEPENDENCY_TOOL="ldd")
++   target_compile_definitions(kerfuffle PRIVATE -DDEPENDENCY_TOOL_ARGS="")
++endif()
++
+ target_link_libraries(kerfuffle
+ PUBLIC
+     KF5::IconThemes
+diff --git a/kerfuffle/pluginmanager.cpp b/kerfuffle/pluginmanager.cpp
+index 02f085acfe79cf42de4525badabae66085f0fbe3..e3be7a8a8415bd574fa1a6916c19e3c32ac08b71 100644
+--- a/kerfuffle/pluginmanager.cpp
++++ b/kerfuffle/pluginmanager.cpp
+@@ -269,21 +269,25 @@ bool PluginManager::libarchiveHasLzo()
+         return QString();
+     }();
+ 
+-    // Step 2: ldd the libarchive plugin to figure out the absolute libarchive path.
+-    QProcess ldd;
+-    ldd.start(QStringLiteral("ldd"), {pluginPath});
+-    ldd.waitForFinished();
+-    const QString output = QString::fromUtf8(ldd.readAllStandardOutput());
+-    QRegularExpression regex(QStringLiteral("/.*/libarchive.so"));
++    // Step 2: process the libarchive plugin dependencies to figure out the absolute libarchive path.
++    QProcess dependencyTool;
++    QStringList args = {QStringLiteral(DEPENDENCY_TOOL_ARGS)};
++    dependencyTool.setProgram(QStringLiteral(DEPENDENCY_TOOL));
++    dependencyTool.setArguments(args + QStringList(pluginPath));
++    dependencyTool.start();
++    dependencyTool.waitForFinished();
++    const QString output = QString::fromUtf8(dependencyTool.readAllStandardOutput());
++    QRegularExpression regex(QStringLiteral("/.*/libarchive.so|/.*/libarchive.*.dylib"));
+     if (!regex.match(output).hasMatch()) {
+         return false;
+     }
+ 
+     // Step 3: check whether libarchive links against liblzo.
+-    const QString libarchivePath = regex.match(output).captured(0);
+-    ldd.start(QStringLiteral("ldd"), {libarchivePath});
+-    ldd.waitForFinished();
+-    return ldd.readAllStandardOutput().contains(QByteArrayLiteral("lzo"));
++    const QStringList libarchivePath(regex.match(output).captured(0));
++    dependencyTool.setArguments(args + libarchivePath);
++    dependencyTool.start();
++    dependencyTool.waitForFinished();
++    return dependencyTool.readAllStandardOutput().contains(QByteArrayLiteral("lzo"));
+ }
+ 
+ }
