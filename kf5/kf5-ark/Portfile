@@ -3,6 +3,7 @@
 # Copyright (c) 2015, 2016 R.J.V. Bertin
 
 PortSystem          1.0
+PortGroup           compiler_blacklist_versions 1.0
 
 set kf5.project     ark
 set kf5.virtualPath applications
@@ -12,16 +13,37 @@ PortGroup           kf5 1.1
 
 maintainers         gmail.com:rjvbertin mk openmaintainer
 
-installs_libs       no
-
 description         KDE file archive utility.
 long_description    Ark is a graphical file compression/decompression utility \
                     with support for multiple formats, including tar, gzip, bzip2, \
                     rar, lrzip and zip, as well as CD-ROM images. Ark can be used to \
                     browse, extract, create, and modify archives.
 
-checksums           rmd160  9f1a9778ce109cfc70ea9f09f05ef65afbf0622b \
-                    sha256  2a149b63478edd260fb03b53b667d66424511b93b770ecf7a3b32a85c325e83d
+subport ${name}-devel {
+    description     ${description} This port follows git:origin/master
+    long_description \
+                    ${long_description} This port follows git:origin/master
+}
+
+if {${subport} eq "${name}-devel"} {
+    conflicts       ${name}
+    fetch.type      git
+    git.url         git://anongit.kde.org/ark
+#     v17.04.1-27-g26c15dc
+    git.branch      26c15dcb4edce9291d6ea6adf9af22f11ea361e8
+    set release     17.04.1.27
+    version         ${release}
+    worksrcdir      ${name}-5
+    distname        ${name}-5
+
+    patch.pre_args  -Np1
+
+
+} else {
+    conflicts       ${name}-devel
+    checksums       rmd160  f17082f0f88bcac7f96d2228b31c5b0f5f0dda9a \
+                    sha256  36e31d5cad2c378e07813a1b773e64f9387b5d4fe953d5e108ee9ac4c6165ff2
+}
 
 depends_lib-append  port:libarchive \
                     port:shared-mime-info \
@@ -31,10 +53,21 @@ depends_lib-append  port:libarchive \
 
 kf5.depends_frameworks \
                     karchive kconfig kcrash kdbusaddons \
-                    ki18n kiconthemes kio kservice kparts \
-                    kpty kwidgetsaddons
+                    ki18n kiconthemes kio kitemmodels kservice \
+                    kparts kpty kwidgetsaddons
 
 kf5.allow_apidocs_generation no
+
+platform darwin {
+    compiler.blacklist *gcc* {clang <= 600} macports-clang-3.3 macports-clang-3.4 macports-clang-3.5
+    foreach clv {3.6 3.7 3.8 3.9 4.0} {
+        if {[file exists ${prefix}/bin/clang-mp-${clv}]} {
+            compiler.whitelist-prepend macports-clang-${clv}
+        }
+        compiler.fallback-prepend macports-clang-${clv}
+    }
+#     compiler.fallback-prepend   macports-clang-4.0 macports-clang-3.9 macports-clang-3.8 macports-clang-3.7 macports-clang-3.6
+}
 
 platform darwin {
      kf5.kde4compat {

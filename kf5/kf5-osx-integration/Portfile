@@ -4,10 +4,24 @@
 
 PortSystem          1.0
 
-set kf5.project     osx-integration
-set kf5.virtualPath scratch
-set kf5.category    integration
-PortGroup           kf5 1.1
+variant qtonly conflicts replace_cocoa kdedialogs description {build only the Qt plugins} {}
+
+if {[variant_isset qtonly]} {
+    # even in this case we probably prefer to install qt5-kde
+    # if no Qt5 port is installed yet.
+    set qt5.prefer_kde  1
+    PortGroup           qt5 1.0
+    PortGroup           cmake 1.1
+
+    name                kf5-osx-integration
+    license             LGPL-3
+} else {
+    set kf5.project     osx-integration
+    set kf5.virtualPath scratch
+    set kf5.category    integration
+    PortGroup           kf5 1.1
+    license-append      LGPL-3
+}
 
 # in case of unexpected behaviour, set QT_DEBUG_PLUGINS=1
 # cf. http://doc.qt.io/qt-5/deployment-plugins.html#debugging-plugins
@@ -15,13 +29,17 @@ PortGroup           kf5 1.1
 description         OS X platform theme plugin
 long_description    This port contains an OS X adaptation of KDE's platform theme plugin \
                     which brings the KDE theme extensions to Qt5/KF5 applications on Mac. \
-                    This allows them customise their interface (widget \
+                    This allows them to customise their interface (widget \
                     style, fonts, colours & icons) almost just like they can on Linux/KDE desktop. \
                     The plugin also provides click-and-hold support (opens the contextmenu for \
-                    select Qt widgets) and optional emulation of a Menu key.
+                    select Qt widgets) and optional emulation of a Menu key. \
+                    The port also provides modified versions of Qt's Cocoa platform plugin and \
+                    'native' Macintosh widget style, providing among others improved support for \
+                    less-common font-weights and named menu sections.
 maintainers         gmail.com:rjvbertin mk openmaintainer
-homepage            https://cgit.kde.org/scratch/rjvbb/osx-integration.git/
+homepage            https://cgit.kde.org/osx-integration.git/
 
+# plugins are not libraries even if technically they're almost exactly the same thing
 installs_libs       no
 
 subport ${name}-devel {}
@@ -39,8 +57,12 @@ if {${subport} eq "${name}-devel"} {
     conflicts       ${name}
     fetch.type      git
     git.url         git://anongit.kde.org/scratch/rjvbb/osx-integration
-    git.branch      628c36e67f3834dfda1f6dc2ed8b977ce3b2f452
-    version         5.30.0.17
+    # master branch has Qt plugins from Qt 5.8.0
+    # git.branch      17c15ac254498416aec8337378d40187c512d157
+    # version         5.31.31
+    # qt590 branch has plugins from Qt 5.9.0 (RC, to be exact)
+    git.branch      b2bd0e87d69efe48b809e564a6b229363988be52
+    version         5.31.68
     worksrcdir      ${name}-5
     distname        ${name}-5
 } else {
@@ -57,9 +79,47 @@ if {${subport} eq "${name}-devel"} {
     }
 }
 
-kf5.depends_frameworks \
+if {![variant_isset qtonly]} {
+    kf5.depends_frameworks \
                     kconfig kconfigwidgets ki18n kiconthemes \
                     kio knotifications kwidgetsaddons
+}
+
+# taken from the qt5-kde Portfile
+global OSX_MINOR
+set OSX_MINOR ""
+# hopefully the MACOSX_DEPLOYMENT_TARGET exists and is set by now.  if
+# not, last resort (which is not desirable) is to use the os.version.
+if {${macosx_deployment_target} ne ""} {
+    set OSX_MINOR [lindex [split ${macosx_deployment_target} "."] 1]
+} else {
+    set OSX_MINOR [expr ${os.major} - 4]
+}
+
+platform darwin {
+    if {${configure.sdkroot} eq ""} {
+        # default: build for the current OS version, requesting the corresponding SDK explicitly
+        if {[catch {exec xcrun --show-sdk-path -sdk macosx10.${OSX_MINOR}} result]} {
+            ui_debug "Couldn't find preferred SDK macosx10.${OSX_MINOR}: ${result}"
+            # the preferred matching SDK isn't available; check if the default SDK is
+            set SDK [exec xcrun -show-sdk-version]
+            if {[catch {exec xcrun --show-sdk-path -sdk macosx${SDK}} result]} {
+                ui_msg "Couldn't find the preferred nor a SDK macosx${SDK}: ${result}"
+            } else {
+                ui_debug "Using default SDK macosx${SDK}"
+                configure.sdkroot "${result}"
+            }
+        } else {
+            ui_debug "Using SDK macosx10.${OSX_MINOR} : ${result}"
+            configure.sdkroot "${result}"
+        }
+    }
+}
+
+if {[variant_isset qtonly]} {
+    configure.args-append \
+                    -DBUILD_KDE_THEME_PLUGIN=OFF
+}
 
 configure.args-append \
                     -DDEFINE_ICONTHEME_SETTINGS=ON \
@@ -67,7 +127,7 @@ configure.args-append \
                     -DOVERRIDE_NATIVE_THEME=OFF \
                     -DEMULATE_MENU_KEY=OFF
 
-variant kdedialogs description {prefer KDE over native dialogs} {
+variant kdedialogs conflicts qtonly description {prefer KDE over native dialogs} {
     configure.args-replace \
                     -DPREFER_NATIVE_DIALOGS=ON \
                     -DPREFER_NATIVE_DIALOGS=OFF
@@ -75,7 +135,7 @@ variant kdedialogs description {prefer KDE over native dialogs} {
                     -DNEVER_NATIVE_DIALOGS=ON
 }
 
-variant replace_cocoa \
+variant replace_cocoa conflicts qtonly \
     description "let the platform plugin replace the native platform theme (see `port info ${subport} +replace_cocoa`)" {
     configure.args-replace \
                     -DOVERRIDE_NATIVE_THEME=OFF \
@@ -88,18 +148,23 @@ variant menukey \
                     -DEMULATE_MENU_KEY=OFF \
                     -DEMULATE_MENU_KEY=ON
 }
-default_variants +menukey
 
-notes-append "Standard KDE fonts are Noto Sans (https://www.google.com/get/noto/) and \
+if {![variant_isset qtonly]} {
+    default_variants +menukey
+
+    notes-append "Standard KDE fonts are Noto Sans (https://www.google.com/get/noto/) and \
 Oxygen Mono (http://download.kde.org/stable/plasma/5.4.0/oxygen-fonts-5.4.0.tar.xz)."
-if {![variant_isset replace_cocoa]} {
-    notes-append \
+    if {![variant_isset replace_cocoa]} {
+        notes-append \
 "Also, in order to use your selected \
 KDE theme automatically, you need to use port:qt5-kde and set KDE_SESSION_VERSION to a \
 value >=4 (launchctl setenv KDE_SESSION_VERSION 5 and equivalent in your login script).\n\
 What also should work (with any Qt5 version) is to set QT_QPA_PLATFORMTHEME=kde using the same techniques."
-}
-notes-append \
+    }
+    notes-append \
 "\nFinally, many KF5 ports install a wrapper script to invoke applications installed into ${kf5.applications_dir}
 easily from in a terminal session. Those scripts can load a file \"~/.kf5.env\" to set up the environment\;
-a sample is provided (${filespath}/.kf5.env)."
+a sample is provided (${filespath}/sample.kf5.env)."
+}
+
+livecheck.type      none

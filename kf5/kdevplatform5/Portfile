@@ -33,22 +33,20 @@ subport ${name}-translations {
                     This port contains the KDevPlatform translations.
     depends_run-append \
                     path:${kf5.libs_dir}/libKDevPlatformShell.${kf5::libs_ext}:${name}
+    default_variants-append \
+                    +docs
 }
 
 if {${subport} eq "${name}-devel"} {
     conflicts       ${name}
     fetch.type      git
-    if {[file exists ${filespath}/${name}-git/.git]} {
-        git.url     ${filespath}/${name}-git
-    } else {
-        git.url     git://anongit.kde.org/kdevplatform
-    }
+    git.url         git://anongit.kde.org/kdevplatform
 # #     v5.0.80-283-g576760b
 #     git.branch      576760bff6b91f3ea8121842a4d56036151a0f79
     ## switch to the 5.1 branch for now
-    # v5.1.0-10-g66a00d353
-    git.branch      66a00d353caf9ddb0fea57f945829386c8cf33f1
-    set release     5.1.0.10
+    epoch           5.1
+    git.branch      56af2800c4ede3422a9d5b696a7c0f2674be0aae
+    set release     5.1.1.9
     version         ${release}
     worksrcdir      ${name}-5
     distname        ${name}-5
@@ -62,13 +60,13 @@ if {${subport} eq "${name}-devel"} {
     description     ${description}
     long_description \
                     ${long_description}
-    version         5.1.0
+    version         5.1.1
     set branch      [join [lrange [split ${version} .] 0 1] .]
     use_xz          yes
     master_sites    http://download.kde.org/stable/kdevelop/${version}/src
     distname        ${kf5.project}-${version}
-    checksums       rmd160  5967c1ea8da855341b2853a8168fff3c4012a989 \
-                    sha256  f09f3b807c9d360b894bc4439cce5b1cb23ff0754941dd26abf45c33b731aedb
+    checksums       rmd160  bdc1b666d473337271b4f31cd8aa2983679e8d49 \
+                    sha256  3159440512b1373c1a4b35f401ba1f81217de9578372b45137af141eeda6e726
     set PPREFIX     "devel/"
     set PPREFIX51   "devel/"
 }
@@ -97,16 +95,12 @@ kf5.depends_frameworks \
 
 platform darwin {
     compiler.blacklist *gcc* {clang < 602} macports-clang-3.3 macports-clang-3.4 macports-clang-3.5
-    if {[file exists ${prefix}/bin/clang-mp-3.7]} {
-        compiler.whitelist-prepend macports-clang-3.7
+    foreach clv {3.6 3.7 3.8 3.9 4.0} {
+        if {[file exists ${prefix}/bin/clang-mp-${clv}]} {
+            compiler.whitelist-prepend macports-clang-${clv}
+        }
+        compiler.fallback-prepend macports-clang-${clv}
     }
-    if {[file exists ${prefix}/bin/clang-mp-3.8]} {
-        compiler.whitelist-prepend macports-clang-3.8
-    }
-    if {[file exists ${prefix}/bin/clang-mp-3.9]} {
-        compiler.whitelist-prepend macports-clang-3.9
-    }
-    compiler.fallback-prepend   macports-clang-3.9 macports-clang-3.8 macports-clang-3.7 macports-clang-3.6
 }
 
 #Binaries do not link to openssl
@@ -155,7 +149,7 @@ if {${subport} eq "${name}-translations"} {
                         patch-prevent-patchreview-crash.diff \
                         patch-idealdockwidget-deletelater.diff \
                         patch-outputfilteringstrats.diff \
-                        patch-itemrepositoryh-noasserts.diff \
+                        patch-avoid-duchain-hang-on-exit.diff \
                         patch-mark-nongui-execs.diff \
                         patch-constrain-bg-parser-threads.diff \
                         patch-projectman-shortcuts-simple.diff \
@@ -189,11 +183,19 @@ if {${subport} eq "${name}-translations"} {
     if {${subport} eq "${name}-devel"} {
         patchfiles-append \
                         devel/patch-temp-fixes-devel.diff
+        # make some contextmenus tear-off'able
+        patchfiles-append \
+                        devel/patch-tearoff-menus.diff
+        # https://phabricator.kde.org/D6060
+        patchfiles-append \
+                        devel/patch-docswitcher-shortcuts.diff
     }
     # try to hide the documentation toolview (toolbar item) by default
     patchfiles-append   patch-docview-hidden-by-default.patch
 
-    patchfiles-append   patch-patchreview-set-updateComment.diff
+    patchfiles-append   patch-patchreview-set-updateComment.diff \
+                        ${PPREFIX51}patch-cleanup-tempfiles.diff \
+                        patch-patchreview-active-state.diff
 
     variant apidocs description {Generate the API documentation} {}
     if {![variant_isset apidocs]} {

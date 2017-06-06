@@ -52,6 +52,8 @@ subport ${name}-translations {
                     This port contains the KDevelop translations.
     depends_run-append \
                     path:bin/kdevelop5:${name}
+    default_variants-append \
+                    +docs
 }
 
 if {${subport} eq "${name}"} {
@@ -74,8 +76,8 @@ if {(${subport} eq "${name}-${PARSER}") || (${subport} eq "${name}-${PARSER}-dev
         configure.cppflags-append \
                     -DNO_UNKNOWNDECLARATION_PROBLEM_SUPPORT
     }
-    variant system conflicts llvm35 llvm36 llvm37 llvm38 llvm39 description "Use the system LLVM/Clang for the C/C++ parser" {}
-    set lldversions {3.6 3.7 3.8 3.9}
+    variant system conflicts llvm35 llvm36 llvm37 llvm38 llvm39 llvm40 description "Use the system LLVM/Clang for the C/C++ parser" {}
+    set lldversions {3.6 3.7 3.8 3.9 4.0}
     set llvariant ""
     foreach ldv ${lldversions} {
         set llv [join [lrange [split ${ldv} .] 0 1] ""]
@@ -93,7 +95,7 @@ if {(${subport} eq "${name}-${PARSER}") || (${subport} eq "${name}-${PARSER}-dev
     }
     if {${llvariant} eq "" && ![variant_isset system]} {
         default_variants \
-                    +llvm38
+                    +llvm39
     }
     foreach ldv ${lldversions} {
         set llv [join [lrange [split ${ldv} .] 0 1] ""]
@@ -118,12 +120,9 @@ kf5.require_kf5compat -port kdevelop include/kdevplatform/kdevplatformversion.h
 
 if {(${subport} eq "${name}-devel") || (${subport} eq "${name}-${PARSER}-devel")} {
     fetch.type      git
-    git.url     git://anongit.kde.org/kdevelop
-# #     v5.0.80-145-g29f44a8
-#     git.branch      29f44a8a65c44318e0b4b06a7acdf0804352f7b5
-    # v5.1.0-14-g9568de318e
-    git.branch      9568de318eab40abd1a7cc5ab7e01c478be4fddc
-    version         5.1.0.14
+    git.url         git://anongit.kde.org/kdevelop
+    git.branch      0c6c71c72873f6dd53841ed8649b772a46a2409a
+    version         5.1.1.23
     depends_lib-append \
                     port:kf5-kdevplatform-devel
     if {${subport} eq "${name}-${PARSER}-devel"} {
@@ -135,16 +134,16 @@ if {(${subport} eq "${name}-devel") || (${subport} eq "${name}-${PARSER}-devel")
     }
     set PPREFIX     devel
     # where patches for the 5.1 git branch live
-    set PPREFIX51   .
+    set PPREFIX51   devel51
 } else {
-    version         5.1.0
+    version         5.1.1
     use_xz          yes
     set branch      [join [lrange [split ${version} .] 0 1] .]
     use_xz          yes
     master_sites    http://download.kde.org/stable/kdevelop/${version}/src
     distname        ${kf5.project}-${version}
-    checksums       rmd160  8ebd7811693791144329cf1bd07793ce001d1bce \
-                    sha256  c0bc424a765a9be3ffb25acefcfa4db323b0612bae762fca1ae70225fa5c8ce8
+    checksums       rmd160  390bcff16a556e3dfb9350051d8b843800f3f8a6 \
+                    sha256  0a01a4ffb2f01802cf4945521a3149a8f82c21fa8a97935991f1854b7db5d754
     if {${subport} ne "${name}-translations"} {
         depends_lib-append \
                         path:${kf5.libs_dir}/libKDevPlatformShell.${kf5::libs_ext}:kf5-kdevplatform
@@ -154,7 +153,7 @@ if {(${subport} eq "${name}-devel") || (${subport} eq "${name}-${PARSER}-devel")
                     port:kf5-kdevplatform-devel
     }
     set PPREFIX     .
-    # where patches for the 5.1 git branch live
+    # where patches for the 5.1 release series live
     set PPREFIX51   .
 }
 
@@ -177,16 +176,12 @@ depends_lib-append  port:kf5-libksysguard
 
 platform darwin {
 compiler.blacklist *gcc* {clang < 602} macports-clang-3.3 macports-clang-3.4 macports-clang-3.5
-    if {[file exists ${prefix}/bin/clang-mp-3.7]} {
-        compiler.whitelist-prepend macports-clang-3.7
+    foreach clv {3.6 3.7 3.8 3.9 4.0} {
+        if {[file exists ${prefix}/bin/clang-mp-${clv}]} {
+            compiler.whitelist-prepend macports-clang-${clv}
+        }
+        compiler.fallback-prepend macports-clang-${clv}
     }
-    if {[file exists ${prefix}/bin/clang-mp-3.8]} {
-        compiler.whitelist-prepend macports-clang-3.8
-    }
-    if {[file exists ${prefix}/bin/clang-mp-3.9]} {
-        compiler.whitelist-prepend macports-clang-3.9
-    }
-    compiler.fallback-prepend   macports-clang-3.9 macports-clang-3.8 macports-clang-3.7 macports-clang-3.6
 }
 
 #Binaries do not link to openssl
@@ -265,6 +260,7 @@ patchfiles-append \
 # our kdev_format_source has suffix 5
 patchfiles-append   ${PPREFIX51}/patch-kdevformatsource.diff
 
+patchfiles-append   patch-cleanup-tempfiles.diff
 
 if {${subport} eq "${name}-translations"} {
     # extract only the translations and CMake stuff
