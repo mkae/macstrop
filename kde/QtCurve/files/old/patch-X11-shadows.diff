@@ -1,0 +1,337 @@
+diff --git a/gtk2/common/common.h b/gtk2/common/common.h
+index e550cb603a19447222a1a98e268ef21eaa0b6b47..d43f4b7d5ce3f1cc908d2325143eb286c32c6fa9 100644
+--- a/gtk2/common/common.h
++++ b/gtk2/common/common.h
+@@ -630,7 +630,8 @@ typedef struct {
+                      windowBorder,
+                      bgndOpacity,
+                      menuBgndOpacity,
+-                     dlgOpacity;
++                     dlgOpacity,
++                     shadowSize;
+     EStripe          stripedProgress;
+     ESliderStyle     sliderStyle;
+     EMouseOver       coloredMouseOver;
+diff --git a/gtk2/common/config_file.cpp b/gtk2/common/config_file.cpp
+index a343de665c664fd1167c448be10d409218f2493f..5df550fc709ded4ddf1d13c32dd034a62d1d1c3c 100644
+--- a/gtk2/common/config_file.cpp
++++ b/gtk2/common/config_file.cpp
+@@ -1377,6 +1377,8 @@ bool qtcReadConfig(const char *file, Options *opts, Options *defOpts)
+             CFG_READ_INT(bgndOpacity);
+             CFG_READ_INT(menuBgndOpacity);
+             CFG_READ_INT(dlgOpacity);
++            CFG_READ_INT(shadowSize);
++            qtcX11SetShadowSize(opts->shadowSize);
+             CFG_READ_SHADE(menuStripe, true, true, &opts->customMenuStripeColor);
+             CFG_READ_APPEARANCE(menuStripeAppearance, APP_ALLOW_BASIC);
+             CFG_READ_SHADE(comboBtn, true, false, &opts->customComboBtnColor);
+@@ -1749,6 +1751,7 @@ void qtcDefaultSettings(Options *opts)
+     opts->stdSidebarButtons=false;
+     opts->toolbarTabs=false;
+     opts->bgndOpacity = opts->dlgOpacity = opts->menuBgndOpacity = 100;
++    opts->shadowSize = qtcX11ShadowSize();
+     opts->gtkComboMenus=false;
+     opts->noBgndGradientApps=nullptr;
+     opts->noBgndOpacityApps=g_strsplit("sonata,totem,vmware,vmplayer",",", -1);;
+diff --git a/lib/utils/options.h b/lib/utils/options.h
+index cc8a948b8d4f84643bfdd6306920c57e95785066..8ddd46396a1644ed9d68d5ca94e4d954bfd0eb92 100644
+--- a/lib/utils/options.h
++++ b/lib/utils/options.h
+@@ -180,6 +180,15 @@ qtcScrollbarButtonNumSize(EScrollbar type)
+     return qtcMax(qtcScrollbarButtonNum(type), 2);
+ }
+ 
++/**
++ * shadow size control for X11.
++ **/
++
++void
++qtcX11SetShadowSize(int);
++int
++qtcX11ShadowSize();
++
+ namespace QtCurve {
+ namespace Config {
+ 
+diff --git a/lib/utils/x11helpers.cpp b/lib/utils/x11helpers.cpp
+index 68ca94732937c9f135621d6d0b2baccad5109472..232c70378dc25918dc74078aa4b5001d9d7a0af4 100644
+--- a/lib/utils/x11helpers.cpp
++++ b/lib/utils/x11helpers.cpp
+@@ -27,6 +27,8 @@
+ #include "x11qtc.h"
+ #include "x11wrap.h"
+ 
++static int shadow_size = 30;
++
+ #ifdef QTC_ENABLE_X11
+ 
+ #include "log.h"
+@@ -75,7 +77,6 @@ qtcX11ShadowCreatePixmap(const QtCurve::Image *data)
+ void
+ qtcX11ShadowInit()
+ {
+-    int shadow_size = 30;
+     int shadow_radius = 4;
+     QtcColor c1 = {0.4, 0.4, 0.4};
+     QtcColor c2 = {0.2, 0.2, 0.2};
+@@ -328,3 +329,22 @@ qtcX11SetBgnd(xcb_window_t, uint32_t)
+ }
+ 
+ #endif
++
++QTC_EXPORT void
++qtcX11SetShadowSize(int size)
++{
++    if (size >= 0 && size != shadow_size) {
++        shadow_size = size;
++#ifdef QTC_ENABLE_X11
++        qtcX11ShadowDestroy();
++        qtcX11ShadowInit();
++#endif
++    }
++}
++
++QTC_EXPORT int
++qtcX11ShadowSize()
++{
++    return shadow_size;
++}
++
+diff --git a/qt4/common/common.h b/qt4/common/common.h
+index 1768a92e98ec73d77bcbfd694fd5a32b0027f7da..6312ef9047b129fe1be25dea5dcff4cd31f51cf5 100644
+--- a/qt4/common/common.h
++++ b/qt4/common/common.h
+@@ -805,7 +805,8 @@ typedef struct {
+                      windowBorder,
+                      bgndOpacity,
+                      menuBgndOpacity,
+-                     dlgOpacity;
++                     dlgOpacity,
++                     shadowSize;
+     int              dwtSettings;
+     int              titlebarButtons;
+     TBCols           titlebarButtonColors;
+diff --git a/qt4/common/config_file.cpp b/qt4/common/config_file.cpp
+index 09d43d8122d43e20e60319b3b0e4f26c3b6ffd71..e5a6d19792d9f8cbdf920cbebe9d54496fab1b6c 100644
+--- a/qt4/common/config_file.cpp
++++ b/qt4/common/config_file.cpp
+@@ -1303,6 +1303,8 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+             CFG_READ_INT(bgndOpacity);
+             CFG_READ_INT(menuBgndOpacity);
+             CFG_READ_INT(dlgOpacity);
++            CFG_READ_INT(shadowSize);
++            qtcX11SetShadowSize(opts->shadowSize);
+             CFG_READ_SHADE(menuStripe, true, true, &opts->customMenuStripeColor);
+             CFG_READ_APPEARANCE(menuStripeAppearance, APP_ALLOW_BASIC);
+             CFG_READ_SHADE(comboBtn, true, false, &opts->customComboBtnColor);
+@@ -1599,6 +1601,7 @@ void qtcDefaultSettings(Options *opts)
+     opts->stdSidebarButtons=false;
+     opts->toolbarTabs=false;
+     opts->bgndOpacity=opts->dlgOpacity=opts->menuBgndOpacity=100;
++    opts->shadowSize = qtcX11ShadowSize();
+     opts->gtkComboMenus=false;
+     opts->customMenubarsColor.setRgb(0, 0, 0);
+     opts->customSlidersColor.setRgb(0, 0, 0);
+@@ -2319,6 +2322,7 @@ bool qtcWriteConfig(KConfig *cfg, const Options &opts, const Options &def, bool
+         CFG_WRITE_ENTRY_NUM(bgndOpacity);
+         CFG_WRITE_ENTRY_NUM(menuBgndOpacity);
+         CFG_WRITE_ENTRY_NUM(dlgOpacity);
++        CFG_WRITE_ENTRY_NUM(shadowSize);
+         CFG_WRITE_ENTRY(stdBtnSizes);
+         CFG_WRITE_ENTRY_NUM(titlebarButtons);
+         CFG_WRITE_ENTRY(titlebarIcon);
+diff --git a/qt4/config/qtcurveconfig.cpp b/qt4/config/qtcurveconfig.cpp
+index d6f108ee84da772a7f668b6fc3d1dee1533ebe8d..bc9650edf2f3b63bb9c2dbe846b2c0b1d37ba302 100644
+--- a/qt4/config/qtcurveconfig.cpp
++++ b/qt4/config/qtcurveconfig.cpp
+@@ -960,6 +960,12 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+     dlgOpacity->setValue(100);
+     menuBgndOpacity->setRange(0, 100, 5);
+     menuBgndOpacity->setValue(100);
++    dropShadowSize->setRange(0, 100);
++    dropShadowSize->setSingleStep(1);
++    dropShadowSize->setValue(qtcX11ShadowSize());
++#ifndef QTC_ENABLE_X11
++    dropShadowSize->setEnabled(false);
++#endif
+ 
+     sliderWidth->setRange(MIN_SLIDER_WIDTH, MAX_SLIDER_WIDTH, 2);
+     sliderWidth->setValue(DEFAULT_SLIDER_WIDTH);
+@@ -1109,6 +1115,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+     connect(dlgOpacity, SIGNAL(valueChanged(int)), SLOT(updateChanged()));
+     connect(menuBgndImage, SIGNAL(currentIndexChanged(int)), SLOT(menuBgndImageChanged()));
+     connect(menuBgndOpacity, SIGNAL(valueChanged(int)), SLOT(updateChanged()));
++    connect(dropShadowSize, SIGNAL(valueChanged(int)), SLOT(updateChanged()));
+     connect(dwtAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+     connect(tooltipAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+     connect(dwtBtnAsPerTitleBar, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+@@ -3082,6 +3089,8 @@ void QtCurveConfig::setOptions(Options &opts)
+     opts.dlgOpacity=dlgOpacity->value();
+     opts.menuBgndImage.type=(EImageType)menuBgndImage->currentIndex();
+     opts.menuBgndOpacity=menuBgndOpacity->value();
++    opts.shadowSize=dropShadowSize->value();
++    qtcX11SetShadowSize(opts.shadowSize);
+     opts.dwtAppearance=(EAppearance)dwtAppearance->currentIndex();
+     opts.tooltipAppearance=(EAppearance)tooltipAppearance->currentIndex();
+     opts.xbar=xbar->isChecked();
+@@ -3392,6 +3401,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
+     dlgOpacity->setValue(opts.dlgOpacity);
+     menuBgndImage->setCurrentIndex(opts.menuBgndImage.type);
+     menuBgndOpacity->setValue(opts.menuBgndOpacity);
++    dropShadowSize->setValue(qtcX11ShadowSize());
+     dwtAppearance->setCurrentIndex(opts.dwtAppearance);
+     tooltipAppearance->setCurrentIndex(opts.tooltipAppearance);
+     dwtBtnAsPerTitleBar->setChecked(opts.dwtSettings&DWT_BUTTONS_AS_PER_TITLEBAR);
+@@ -3771,6 +3781,7 @@ bool QtCurveConfig::settingsChanged(const Options &opts)
+          dlgOpacity->value()!=opts.dlgOpacity ||
+          menuBgndImage->currentIndex()!=opts.menuBgndImage.type ||
+          menuBgndOpacity->value()!=opts.menuBgndOpacity ||
++         dropShadowSize->value()!=opts.shadowSize ||
+          dwtAppearance->currentIndex()!=opts.dwtAppearance ||
+          tooltipAppearance->currentIndex()!=opts.tooltipAppearance ||
+          xbar->isChecked()!=opts.xbar ||
+diff --git a/qt4/config/qtcurveconfigbase.ui b/qt4/config/qtcurveconfigbase.ui
+index 11666e2fee8c1b325abda82b0278fbac0bd3546f..19256e17fe51d44390ef29399711ef2ed241dee7 100644
+--- a/qt4/config/qtcurveconfigbase.ui
++++ b/qt4/config/qtcurveconfigbase.ui
+@@ -3759,6 +3759,20 @@
+          </property>
+         </widget>
+        </item>
++       <item row="6" column="0">
++        <widget class="QLabel" name="shadowSizeLabel">
++         <property name="text">
++          <string>Drop shadow size:</string>
++         </property>
++        </widget>
++       </item>
++       <item row="6" column="1">
++        <widget class="QSpinBox" name="dropShadowSize">
++         <property name="toolTip">
++          <string>&lt;p&gt;Sets the base value used for determining drop shadow sizes.&lt;/p&gt;&lt;p&gt;X11 only.</string>
++         </property>
++        </widget>
++       </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="page_26">
+diff --git a/qt5/common/common.h b/qt5/common/common.h
+index 9cae0dd5341e8eb82722b61410b6a33d6710a2d2..d4720f59a8067345dd8138976a0b9a7be285c0f2 100644
+--- a/qt5/common/common.h
++++ b/qt5/common/common.h
+@@ -798,7 +798,8 @@ typedef struct {
+                      windowBorder,
+                      bgndOpacity,
+                      menuBgndOpacity,
+-                     dlgOpacity;
++                     dlgOpacity,
++                     shadowSize;
+     int              dwtSettings;
+     int              titlebarButtons;
+     TBCols           titlebarButtonColors;
+diff --git a/qt5/common/config_file.cpp b/qt5/common/config_file.cpp
+index 59fafcdc4ca482da22dcb963d374a40030e965e2..1e29ff1ba1bc8f8d04a04eb2ba573ff709c66f99 100644
+--- a/qt5/common/config_file.cpp
++++ b/qt5/common/config_file.cpp
+@@ -1308,6 +1308,8 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+             CFG_READ_INT(bgndOpacity);
+             CFG_READ_INT(menuBgndOpacity);
+             CFG_READ_INT(dlgOpacity);
++            CFG_READ_INT(shadowSize);
++            qtcX11SetShadowSize(opts->shadowSize);
+             CFG_READ_SHADE(menuStripe, true, true, &opts->customMenuStripeColor);
+             CFG_READ_APPEARANCE(menuStripeAppearance, APP_ALLOW_BASIC);
+             CFG_READ_SHADE(comboBtn, true, false, &opts->customComboBtnColor);
+@@ -1607,6 +1609,7 @@ void qtcDefaultSettings(Options *opts)
+     opts->stdSidebarButtons=false;
+     opts->toolbarTabs=false;
+     opts->bgndOpacity=opts->dlgOpacity=opts->menuBgndOpacity=100;
++    opts->shadowSize = qtcX11ShadowSize();
+     opts->gtkComboMenus=false;
+     opts->customMenubarsColor.setRgb(0, 0, 0);
+     opts->customSlidersColor.setRgb(0, 0, 0);
+@@ -2330,6 +2333,7 @@ bool qtcWriteConfig(KConfig *cfg, const Options &opts, const Options &def, bool
+         CFG_WRITE_ENTRY_NUM(bgndOpacity);
+         CFG_WRITE_ENTRY_NUM(menuBgndOpacity);
+         CFG_WRITE_ENTRY_NUM(dlgOpacity);
++        CFG_WRITE_ENTRY_NUM(shadowSize);
+         CFG_WRITE_ENTRY(stdBtnSizes);
+         CFG_WRITE_ENTRY_NUM(titlebarButtons);
+         CFG_WRITE_ENTRY(titlebarIcon);
+diff --git a/qt5/config/qtcurveconfig.cpp b/qt5/config/qtcurveconfig.cpp
+index e4af7354efff76a3e2261f622c332095539a2d3b..50fc1591ab30de369823fe707d586a8db8b240ec 100644
+--- a/qt5/config/qtcurveconfig.cpp
++++ b/qt5/config/qtcurveconfig.cpp
+@@ -972,6 +972,13 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+     menuBgndOpacity->setRange(0, 100);
+     menuBgndOpacity->setSingleStep(5);
+     menuBgndOpacity->setValue(100);
++    dropShadowSize->setRange(0, 100);
++    dropShadowSize->setSingleStep(1);
++    dropShadowSize->setValue(qtcX11ShadowSize());
++#ifndef QTC_ENABLE_X11
++    dropShadowSize->setEnabled(false);
++#endif
++
+ 
+     sliderWidth->setRange(MIN_SLIDER_WIDTH, MAX_SLIDER_WIDTH);
+     sliderWidth->setSingleStep(2);
+@@ -1000,7 +1007,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+ 
+     for (auto *w: {lighterPopupMenuBgnd, tabBgnd, menuDelay, menuCloseDelay, crHighlight,
+                 expanderHighlight, colorSelTab, highlightFactor, bgndOpacity,
+-                dlgOpacity, menuBgndOpacity, splitterHighlight, gbFactor}) {
++                dlgOpacity, menuBgndOpacity, splitterHighlight, gbFactor, dropShadowSize}) {
+         connect(qtcSlot(w, valueChanged, (int)), qtcSlot(this, updateChanged));
+     }
+ 
+@@ -3045,6 +3052,8 @@ void QtCurveConfig::setOptions(Options &opts)
+     opts.dlgOpacity=dlgOpacity->value();
+     opts.menuBgndImage.type=(EImageType)menuBgndImage->currentIndex();
+     opts.menuBgndOpacity=menuBgndOpacity->value();
++    opts.shadowSize=dropShadowSize->value();
++    qtcX11SetShadowSize(opts.shadowSize);
+     opts.dwtAppearance=(EAppearance)dwtAppearance->currentIndex();
+     opts.tooltipAppearance=(EAppearance)tooltipAppearance->currentIndex();
+     opts.crColor=(EShade)crColor->currentIndex();
+@@ -3357,6 +3366,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
+     dlgOpacity->setValue(opts.dlgOpacity);
+     menuBgndImage->setCurrentIndex(opts.menuBgndImage.type);
+     menuBgndOpacity->setValue(opts.menuBgndOpacity);
++    dropShadowSize->setValue(qtcX11ShadowSize());
+     dwtAppearance->setCurrentIndex(opts.dwtAppearance);
+     tooltipAppearance->setCurrentIndex(opts.tooltipAppearance);
+     dwtBtnAsPerTitleBar->setChecked(opts.dwtSettings&DWT_BUTTONS_AS_PER_TITLEBAR);
+@@ -3738,6 +3748,7 @@ bool QtCurveConfig::settingsChanged(const Options &opts)
+          dlgOpacity->value()!=opts.dlgOpacity ||
+          menuBgndImage->currentIndex()!=opts.menuBgndImage.type ||
+          menuBgndOpacity->value()!=opts.menuBgndOpacity ||
++         dropShadowSize->value()!=opts.shadowSize ||
+          dwtAppearance->currentIndex()!=opts.dwtAppearance ||
+          tooltipAppearance->currentIndex()!=opts.tooltipAppearance ||
+          crColor->currentIndex()!=opts.crColor ||
+diff --git a/qt5/config/qtcurveconfigbase.ui b/qt5/config/qtcurveconfigbase.ui
+index 3c03918b2c152546204f51de983cffc4152c465d..ada136d7e2ce010282f416b7396fcdc7c35f4380 100644
+--- a/qt5/config/qtcurveconfigbase.ui
++++ b/qt5/config/qtcurveconfigbase.ui
+@@ -3823,6 +3823,20 @@
+          </property>
+         </widget>
+        </item>
++       <item row="6" column="0">
++        <widget class="QLabel" name="shadowSizeLabel">
++         <property name="text">
++          <string>Drop shadow size:</string>
++         </property>
++        </widget>
++       </item>
++       <item row="6" column="1">
++        <widget class="QSpinBox" name="dropShadowSize">
++         <property name="toolTip">
++          <string>&lt;p&gt;Sets the base value used for determining drop shadow sizes.&lt;/p&gt;&lt;p&gt;X11 only.</string>
++         </property>
++        </widget>
++       </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="page_26">
