@@ -168,13 +168,13 @@ proc cmake::handle_generator {option action args} {
                 destroot.destdir    DESTDIR=${destroot}
                 # unset the DESTDIR env. variable if it has been set before
                 destroot.env-delete DESTDIR=${destroot}
-                proc ui_progress_info {string} {
-                    if {[scan $string "\[%d%%\] " perc] == 1} {
-                        return $perc
-                    } else {
-                        return -1
-                    }
-                }
+#                 proc ui_progress_info {string} {
+#                     if {[scan $string "\[%d%%\] " perc] == 1} {
+#                         return $perc
+#                     } else {
+#                         return -1
+#                     }
+#                 }
             }
             "*Ninja" {
                 ui_debug "Selecting the Ninja generator ($args)"
@@ -273,8 +273,8 @@ pre-configure {
     # In addition, CMake provides build-type-specific flags for
     # Release (-O3 -DNDEBUG), Debug (-g), MinSizeRel (-Os -DNDEBUG), and
     # RelWithDebInfo (-O2 -g -DNDEBUG). If the configure.optflags have been
-    # set (-Os by default), we have to remove the optimisation flags from the
-    # from the concerned Release build type so that configure.optflags
+    # set (-Os by default), we have to remove the optimisation flags from
+    # the concerned Release build type so that configure.optflags
     # gets honored (Debug used by the +debug variant does not set
     # optimisation flags by default).
     # NB: more recent CMake versions (>=3?) no longer take the env. variables into
