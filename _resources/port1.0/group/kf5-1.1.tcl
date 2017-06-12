@@ -44,6 +44,15 @@ namespace eval kf5 {
 }
 
 if {${kf5::includecounter} == 0} {
+    platform linux {
+        pre-configure {
+            # no multi-arch support on Linux;
+            # adding "-arch foo" to the compiler options just causes warnings on each invocation
+            ui_debug "Resetting configure.build_arch, was ${configure.build_arch}"
+            configure.build_arch
+        }
+    }
+
     PortGroup           cmake 1.1
     set qt5.prefer_kde  1
     PortGroup           qt5 1.0
@@ -109,8 +118,7 @@ if {![info exists kf5.version]} {
     # kf5.latest_version is supposed to be used only in the KF5-Frameworks Portfile
     # when updating it to the new version (=kf5.latest_version). This feature is
     # activated only when a file `port dir KF5-Frameworks`/files/enable_latest exists.
-    set kf5.latest_version \
-                        5.32.0
+    # The variable is thus no longer defined here.
 }
 
 # KF5 Applications version
@@ -174,9 +182,6 @@ if {${kf5::includecounter} == 0} {
     depends_build-append    path:share/ECM/cmake/ECMConfig.cmake:kde-extra-cmake-modules
 
     # configure.args-append   -G "\"CodeBlocks - Unix Makefiles\""
-
-    # Use directory set by qt5-kde or qt5-mac
-    configure.args-append   -DECM_MKSPECS_INSTALL_DIR=${qt_mkspecs_dir}/modules
 
     # set a best-compromise plugin destination directory, the one from Qt5.
     # this is also what Kubuntu does, and possibly the only way to ensure that Qt5
