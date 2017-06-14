@@ -44,15 +44,6 @@ namespace eval kf5 {
 }
 
 if {${kf5::includecounter} == 0} {
-    platform linux {
-        pre-configure {
-            # no multi-arch support on Linux;
-            # adding "-arch foo" to the compiler options just causes warnings on each invocation
-            ui_debug "Resetting configure.build_arch, was ${configure.build_arch}"
-            configure.build_arch
-        }
-    }
-
     PortGroup           cmake 1.1
     set qt5.prefer_kde  1
     PortGroup           qt5 1.0
@@ -114,7 +105,7 @@ if { ![ info exists kf5.project ] } {
 
 # KF5 frameworks current version, which is the same for all frameworks
 if {![info exists kf5.version]} {
-    set kf5.version     5.32.0
+    set kf5.version     5.35.0
     # kf5.latest_version is supposed to be used only in the KF5-Frameworks Portfile
     # when updating it to the new version (=kf5.latest_version). This feature is
     # activated only when a file `port dir KF5-Frameworks`/files/enable_latest exists.
@@ -132,7 +123,7 @@ if {![ info exists kf5.release ]} {
 if {![ info exists kf5.plasma ]} {
     set kf5.plasma      5.9.3
     set kf5.latest_plasma \
-                        5.9.3
+                        5.10.2
 }
 
 platforms               darwin linux
@@ -931,7 +922,7 @@ if {${kf5::includecounter} == 0} {
     }
 
     # create a .macports-$subport-configure.cmd file containing the cmake invocation details
-    cmake.save_configure_cmd
+    cmake.save_configure_cmd "log too"
 
 }
 

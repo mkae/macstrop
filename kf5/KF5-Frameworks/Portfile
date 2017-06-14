@@ -38,7 +38,7 @@ set kf5::tier2_frameworks {kauth kcompletion kcrash kdoctools kfilemetadata kjob
 set kf5::tier3_frameworks {kconfigwidgets kiconthemes kservice kglobalaccel ktextwidgets kxmlgui kbookmarks kwallet kio baloo kactivities kdeclarative kcmutils kinit kded kparts kdewebkit kdesignerplugin kdesu kemoticons knewstuff knotifyconfig kpeople plasma-framework ktexteditor kxmlrpcclient krunner}
 set kf5::tier3_frameworks [lappend kf5::tier3_frameworks kirigami kirigami2]
 set kf5::tier4_frameworks {frameworkintegration}
-set kf5::portingaid_frameworks {kdelibs4support kjs khtml kross}
+set kf5::portingAid_frameworks {kdelibs4support kjs khtml kross}
 
 proc kf5::tier {{fw -1}} {
     global subport kf5.portingAid name
@@ -51,15 +51,15 @@ proc kf5::tier {{fw -1}} {
         }
     }
     set fwnd [string map {"-devel" ""} ${fw}]
-    foreach t {tier1 tier2 tier3 tier4 portingaid} {
+    foreach t {tier1 tier2 tier3 tier4 portingAid} {
         namespace upvar ::kf5 ${t}_frameworks lname
         if {[lsearch -exact $lname ${fw}] >= 0 || [lsearch -exact $lname ${fwnd}] >= 0 \
                 || ${fw} eq "${t}-frameworks"} {
             return "${t}"
         }
     }
-    if {[lsearch -exact ${kf5::portingaid_frameworks} ${fw}] >= 0 \
-                || [lsearch -exact ${kf5::portingaid_frameworks} ${fwnd}] >= 0 \
+    if {[lsearch -exact ${kf5::portingAid_frameworks} ${fw}] >= 0 \
+                || [lsearch -exact ${kf5::portingAid_frameworks} ${fwnd}] >= 0 \
                 || ${fw} eq "tier${t}-frameworks" || ${fw} eq "portingaid-frameworks"} {
         return "portingAid"
     } elseif {${fw} ne "placeholder" && ${fw} ne "${name}"} {
@@ -113,14 +113,6 @@ if {(${kf5.latest_version} ne ${kf5.version})} {
     ui_debug "${subport} is registered as a ${tier} framework"
     switch ${tier} {
         "tier1" {
-            ui_debug "${tier} frameworks use latest_version"
-            kf5.use_latest  kf5.version
-            version         ${kf5.version}
-            set checksums.table \
-                    checksums-${kf5.version}.table
-            set PVERSION    ""
-        }
-        "tier2" {
             ui_debug "${tier} frameworks use latest_version"
             kf5.use_latest  kf5.version
             version         ${kf5.version}
@@ -1166,7 +1158,7 @@ subport kf5-kactivities {
     kf5.depends_qt5_components \
                     qtdeclarative
     kf5.depends_frameworks \
-                    kconfig kcoreaddons kio kwindowsystem
+                    kconfig kcoreaddons kwindowsystem
     kf5.kde4compat {
         # note: it might be useful to provide a complementary variant to port:kactivities
         # really note: this is only required because of OS X's silly case-insensitive FS ...
@@ -1356,7 +1348,7 @@ subport kf5-kemoticons {
                     kemoticons
     kf5::set_checkums
     kf5.depends_frameworks \
-                    karchive kconfig kservice kcoreaddons
+                    karchive kconfig kcoreaddons kservice
 }
 
 subport kf5-kglobalaccel {
@@ -1371,7 +1363,7 @@ subport kf5-kglobalaccel {
     kf5::set_checkums
     kf5.depends_frameworks \
                     kconfig kcoreaddons kcrash kdbusaddons \
-                    ki18n kwindowsystem kservice
+                    ki18n kwindowsystem
     patchfiles-append \
                     patch-kglobalaccel-agent-and-nogui.diff
 }
@@ -1410,13 +1402,7 @@ subport kf5-kinit {
     post-patch {
         reinplace "s|/usr/local|${prefix}|g" ${worksrcpath}/src/klauncher/klauncher_main.cpp
     }
-    if {[vercmp  ${version} 5.24.0] <= 0} {
-        # test and propose upstream:
-        # https://git.reviewboard.kde.org/r/126161/
-        patchfiles-append \
-                    kinit/patch-kinit-nonguis-andavoid-kdeinit-crash.diff
-    }
-    # submit upstream too
+    # submit upstream
     patchfiles-append \
                     kinit/patch-kinit-klauncher-foreground.diff
     platform darwin {
@@ -1771,9 +1757,6 @@ subport kf5-kservice {
     patchfiles-append \
                     kservice/patch-skip-applications.diff \
                     kservice/patch-no-delete-applications.diff
-    # https://commits.kde.org/kservice/10a07fcb26f8e49f3862edcfbdcfe21f535a8926
-    patchfiles-append \
-                    kservice/patch-kservice-silence-qwarning.diff
     post-patch {
         reinplace "s|@APPMENUPREFIX@|kf5-|g" ${worksrcpath}/src/sycoca/vfolder_menu.cpp
     }
@@ -1852,10 +1835,6 @@ subport kf5-ktexteditor {
         # fix too low lineheights on Mac
         patchfiles-append \
                     ktexteditor/patch-ktexteditor-fix-lineheight.diff
-#        # quench a qwarning about an unsupported clipboard mode
-#        # http://commits.kde.org/ktexteditor/35043d5ebace305cbdabfec9155dcfbd992087c9
-#        versioned_patchfile_append \
-#                    ktexteditor patch-ktexteditor-quench-qcliboard-qwarning.diff
     }
     # fix a confusing alert message
     patchfiles-append \
@@ -1973,7 +1952,7 @@ subport kf5-kxmlgui {
                     kxmlgui
     kf5::set_checkums
     kf5.depends_frameworks \
-                    kconfig kconfigwidgets kcoreaddons kglobalaccel \
+                    attica kconfig kconfigwidgets kcoreaddons kglobalaccel \
                     ki18n kiconthemes kitemviews ktextwidgets \
                     kwidgetsaddons kwindowsystem
 }
@@ -2034,8 +2013,8 @@ subport kf5-frameworkintegration {
                     frameworkintegration
     kf5::set_checkums
     kf5.depends_frameworks \
-                    kconfig kconfigwidgets kiconthemes \
-                    knotifications kpackage kwidgetsaddons
+                    kconfig kconfigwidgets ki18n kiconthemes \
+                    knewstuff knotifications kpackage kwidgetsaddons
     test.env-append \
                     KDE_SESSION_VERSION=5
     post-patch {
@@ -2067,9 +2046,9 @@ subport kf5-frameworkintegration-devel {
     set kf5.framework \
                     frameworkintegration
     fetch.type      git
-#     v5.32.0-2-gcf5fa12
-    git.branch      cf5fa12932c4f9886e2129650bc67963ee8cfd6f
-    version         ${version}.2
+#     v5.35.0-3-gc0b2e4f
+    git.branch      c0b2e4f644f89c58b0da63dbb99f0d15d5164ecb
+    version         5.35.0.3
     kf5.depends_frameworks \
                     kconfig kconfigwidgets kiconthemes knewstuff \
                     knotifications kpackage kwidgetsaddons
@@ -2114,63 +2093,61 @@ subport kf5-kdelibs4support {
     kf5.set_project \
                     kdelibs4support
     kf5::set_checkums
-    depends_build-append \
-                    ${kf5::oxygen-icons_dep} \
-                    path:bin/perl5:perl5 \
-                    port:p${perl5.default_branch}-uri \
-                    lib:libssl:openssl \
-                    port:docbook-xml
-    kf5.depends_qt5_components \
-                    qtsvg
-    kf5.depends_frameworks \
-                    kcompletion kconfig kconfigwidgets \
-                    kcrash kdbusaddons kded kdesignerplugin \
-                    kdoctools kglobalaccel kguiaddons ki18n \
-                    kiconthemes kio knotifications kparts \
-                    kservice ktextwidgets kunitconversion \
-                    kwidgetsaddons kwindowsystem kxmlgui
-    kf5.depends_run_frameworks \
-                    kemoticons
-    platform darwin {
-        # pretend KDE_FULL_SESSION is set in order to get full support for theming settings
-        patchfiles-append \
-                    kdelibs4support/patch-kdelibs4supp-simulate-full_session.diff \
-                    kdelibs4support/patch-kdelibs4supp-add-icon.diff
-        post-patch {
-            # create the destination directory that will host icon file links:
-            xinstall -m 755 -d ${build.dir}/src/kdebugdialog/icons
-            # call kf5.link_icons to populate that directory with icon links with appropriate names:
-            # ${prefix}/share/icons/oxygen/128x128/actions/tools-report-bug.png will become 128-tools-report-bug.png etc.
-            kf5.link_icons ${prefix}/share/icons/oxygen actions tools-report-bug.png ${build.dir}/src/kdebugdialog/icons
-        }
-    }
-    # submit upstream
-    patchfiles-append \
-                    kdelibs4support/patch-kdelibs4supp-qosmac=osx.diff \
-                    kdelibs4support/patch-kdelibs4supp-correct-menuroles-kaction.diff \
-                    kdelibs4support/patch-kdelibs4supp-correct-fileshareset-install.diff
-    # https://git.reviewboard.kde.org/r/126308
+#     depends_build-append \
+#                     ${kf5::oxygen-icons_dep} \
+#                     path:bin/perl5:perl5 \
+#                     port:p${perl5.default_branch}-uri \
+#                     lib:libssl:openssl \
+#                     port:docbook-xml
+#     kf5.depends_qt5_components \
+#                     qtsvg
+#     kf5.depends_frameworks \
+#                     kcompletion kconfig kconfigwidgets \
+#                     kcrash kdbusaddons kded kdesignerplugin \
+#                     kdoctools kglobalaccel kguiaddons ki18n \
+#                     kiconthemes kio knotifications kparts \
+#                     kservice ktextwidgets kunitconversion \
+#                     kwidgetsaddons kwindowsystem kxmlgui
+#     platform darwin {
+#         # pretend KDE_FULL_SESSION is set in order to get full support for theming settings
+#         patchfiles-append \
+#                     kdelibs4support/patch-kdelibs4supp-simulate-full_session.diff \
+#                     kdelibs4support/patch-kdelibs4supp-add-icon.diff
+#         post-patch {
+#             # create the destination directory that will host icon file links:
+#             xinstall -m 755 -d ${build.dir}/src/kdebugdialog/icons
+#             # call kf5.link_icons to populate that directory with icon links with appropriate names:
+#             # ${prefix}/share/icons/oxygen/128x128/actions/tools-report-bug.png will become 128-tools-report-bug.png etc.
+#             kf5.link_icons ${prefix}/share/icons/oxygen actions tools-report-bug.png ${build.dir}/src/kdebugdialog/icons
+#         }
+#     }
+#     # submit upstream
 #     patchfiles-append \
-#                     patch-kdelibs4supp-kpbutton-noshowicon.diff
-    # https://git.reviewboard.kde.org/r/126309/
-    patchfiles-append \
-                    kdelibs4support/patch-kdelibs4supp-backtrace-demangle.diff
-    patchfiles-append \
-                    kdelibs4support/patch-kdelibs4supp-add-bundle-path.diff \
-                    kdelibs4support/patch-kdelibs4supp-preserve-app-icon.diff
-    post-patch {
-        reinplace "s|/usr/local/|${prefix}/|g" ${worksrcpath}/src/kssl/kopenssl.cpp
-        reinplace "s|/usr/sbin|${prefix}/sbin|g" ${worksrcpath}/src/kio/kfileshare.cpp
-        reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/src/kdecore/kmimetyperepository.cpp
-        reinplace "s|/usr/local|${prefix}|g" ${worksrcpath}/src/kdecore/kstandarddirs.cpp
-    }
-    post-destroot {
-        reinplace "s|/usr/bin/perl|${prefix}/bin/perl5|g" ${destroot}${kf5.libexec_dir}/kf5/fileshareset
-        if {[variant_isset kde4compat] && [file exists ${destroot}${prefix}/share/doc/HTML/en/kcontrol/kcm_ssl]} {
-            file rename ${destroot}${prefix}/share/doc/HTML/en/kcontrol/kcm_ssl \
-                ${destroot}${prefix}/share/doc/HTML/en/kcontrol/kcm_ssl5
-        }
-    }
+#                     kdelibs4support/patch-kdelibs4supp-qosmac=osx.diff \
+#                     kdelibs4support/patch-kdelibs4supp-correct-menuroles-kaction.diff \
+#                     kdelibs4support/patch-kdelibs4supp-correct-fileshareset-install.diff
+#     # https://git.reviewboard.kde.org/r/126308
+# #     patchfiles-append \
+# #                     patch-kdelibs4supp-kpbutton-noshowicon.diff
+#     # https://git.reviewboard.kde.org/r/126309/
+#     patchfiles-append \
+#                     kdelibs4support/patch-kdelibs4supp-backtrace-demangle.diff
+#     patchfiles-append \
+#                     kdelibs4support/patch-kdelibs4supp-add-bundle-path.diff \
+#                     kdelibs4support/patch-kdelibs4supp-preserve-app-icon.diff
+#     post-patch {
+#         reinplace "s|/usr/local/|${prefix}/|g" ${worksrcpath}/src/kssl/kopenssl.cpp
+#         reinplace "s|/usr/sbin|${prefix}/sbin|g" ${worksrcpath}/src/kio/kfileshare.cpp
+#         reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/src/kdecore/kmimetyperepository.cpp
+#         reinplace "s|/usr/local|${prefix}|g" ${worksrcpath}/src/kdecore/kstandarddirs.cpp
+#     }
+#     post-destroot {
+#         reinplace "s|/usr/bin/perl|${prefix}/bin/perl5|g" ${destroot}${kf5.libexec_dir}/kf5/fileshareset
+#         if {[variant_isset kde4compat] && [file exists ${destroot}${prefix}/share/doc/HTML/en/kcontrol/kcm_ssl]} {
+#             file rename ${destroot}${prefix}/share/doc/HTML/en/kcontrol/kcm_ssl \
+#                 ${destroot}${prefix}/share/doc/HTML/en/kcontrol/kcm_ssl5
+#         }
+#     }
 }
 
 subport kf5-kdelibs4support-devel {
@@ -2186,13 +2163,18 @@ subport kf5-kdelibs4support-devel {
     # change the type of framework to "portingAid"
     kf5.is_portingAid
     fetch.type      git
-    git.branch      c2fbab94b030e16d925c0f09c0bb6dc0d888595b
 #     v5.2.0-277-gc2fbab9
-    version         ${version}.5.2.0.277
+#     git.branch      c2fbab94b030e16d925c0f09c0bb6dc0d888595b
+#     v5.2.0-291-g265379e
+    git.branch      265379e52b9243886dd082bf5e45d05b2e6360b2
+    version         5.35.0.5.2.0.291
     # call the function that will take care of resetting the rest
     kf5.set_project \
                     kdelibs4support
     distname        ${kf5.project}-5.git
+}
+
+if {${subport} eq "kf5-kdelibs4support" || ${subport} eq "kf5-kdelibs4support-devel"} {
     depends_build-append \
                     ${kf5::oxygen-icons_dep} \
                     path:bin/perl5:perl5 \
@@ -2208,8 +2190,6 @@ subport kf5-kdelibs4support-devel {
                     kiconthemes kio knotifications kparts \
                     kservice ktextwidgets kunitconversion \
                     kwidgetsaddons kwindowsystem kxmlgui
-    kf5.depends_run_frameworks \
-                    kemoticons
     platform darwin {
         # pretend KDE_FULL_SESSION is set in order to get full support for theming settings
         patchfiles-append \
@@ -2367,7 +2347,7 @@ if {${subport} eq ${name}} {
                     port:kf5-tier2-frameworks \
                     port:kf5-tier3-frameworks \
                     port:kf5-frameworkintegration  \
-				port:kf5-portingaid-frameworks
+                    port:kf5-portingaid-frameworks
     installs_libs   no
     supported_archs noarch
     distfiles
