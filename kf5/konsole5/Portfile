@@ -38,9 +38,9 @@ if {${subport} eq "${name}-devel"} {
 # #     v16.12.1-132-g25857cb0
 #     git.branch      25857cb0ec42fda768851765e0318da7c8fe6886
     # v16.12.1-173-gd3cb7d2
-    git.branch      d3cb7d249fe7943955a2ec481622b37ef3c95e47
+    git.branch      4cd725ffbe7a051275a2d5ed093316f6eb0aaa01
     # `git describe` can trail the version in CMakeLists.txt; merge:
-    set release     17.07.70.173
+    set release     17.07.70.175
     version         ${release}
     worksrcdir      ${name}-5
     distname        ${name}-5
