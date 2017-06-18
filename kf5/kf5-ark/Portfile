@@ -29,9 +29,9 @@ if {${subport} eq "${name}-devel"} {
     conflicts       ${name}
     fetch.type      git
     git.url         git://anongit.kde.org/ark
-#     v17.04.1-27-g26c15dc
-    git.branch      26c15dcb4edce9291d6ea6adf9af22f11ea361e8
-    set release     17.04.1.27
+#     v17.04.2-38-g19296ae
+    git.branch      19296aec36e80ff8a25693ee7dfdd7cfe27f48cb
+    set release     17.04.2.38
     version         ${release}
     worksrcdir      ${name}-5
     distname        ${name}-5
@@ -41,8 +41,8 @@ if {${subport} eq "${name}-devel"} {
 
 } else {
     conflicts       ${name}-devel
-    checksums       rmd160  f17082f0f88bcac7f96d2228b31c5b0f5f0dda9a \
-                    sha256  36e31d5cad2c378e07813a1b773e64f9387b5d4fe953d5e108ee9ac4c6165ff2
+    checksums       rmd160  92a36e144911acf85056a7b0474b20364e4b313e \
+                    sha256  dda9222e3d8bfea83997b46cf4f2f7b9677f9bc16463bf15223273f84eebbe7d
 }
 
 depends_lib-append  port:libarchive \
@@ -55,6 +55,8 @@ kf5.depends_frameworks \
                     karchive kconfig kcrash kdbusaddons \
                     ki18n kiconthemes kio kitemmodels kservice \
                     kparts kpty kwidgetsaddons
+kf5.depends_build_frameworks \
+                    kdoctools
 
 kf5.allow_apidocs_generation no
 

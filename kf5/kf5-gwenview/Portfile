@@ -22,13 +22,17 @@ long_description    Gwenview is able to load and save to a variety of image form
 homepage            http://userbase.kde.org/Gwenview
 
 use_xz              yes
-checksums           rmd160  d476e9c6b1c2b6a93ddc4a7297ff5981877418d2 \
-                    sha256  d6ca5a4c27cd1390eb2180da87fac6d23fa3bc2a86562926630e136096c31f5f
+checksums           rmd160  89c2fb7d0c5772ab2e2cddf06f843840e1387664 \
+                    sha256  2aeb9b571e30e597e0bacafd1fe8d9bccdc75c3c3c3e3a0904f6433506ef3775
 
 kf5.depends_qt5_components \
                     qtsvg
+kf5.depends_build_frameworks \
+                    kdoctools
 kf5.depends_frameworks \
-                    kactivities kio kdelibs4support
+                    kactivities kio kdelibs4support ki18n \
+                    kiconthemes kitemmodels knotifications \
+                    kparts kwindowsystem 
 
 depends_lib-append  port:phonon-qt5 \
                     port:zlib \
@@ -36,6 +40,8 @@ depends_lib-append  port:phonon-qt5 \
                     port:kf5-libkdcraw \
                     path:${kf5.libs_dir}/libKF5Kipi.${kf5::libs_ext}:kf5-libkipi \
                     port:jpeg
+
+depends_run-append  port:kf5-kamera
 
 kf5.allow_apidocs_generation no
 
@@ -57,14 +63,13 @@ platform darwin {
             file delete -force ${destroot}${prefix}/share/icons
         }
     }
-    post-destroot {
-        kf5.add_app_wrapper gwenview5 gwenview
-    }
 }
 platform linux {
     kf5.depends_frameworks \
                     baloo
-    post-destroot {
-        kf5.add_app_wrapper gwenview5 gwenview
-    }
+}
+
+post-destroot {
+    kf5.add_app_wrapper gwenview5 gwenview
+    kf5.add_app_wrapper gwenview_importer5 gwenview_importer
 }
