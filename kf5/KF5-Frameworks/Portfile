@@ -659,7 +659,8 @@ subport kf5-kwidgetsaddons {
                     kwidgetsaddons
     kf5::set_checkums
     patchfiles-append \
-                    kwidgetsaddons/patch-kwidgaddons-pack-pwdialog.diff
+                    kwidgetsaddons/patch-kwidgaddons-pack-pwdialog.diff \
+                    kwidgetsaddons/patch-kwidgaddons-nonative-colourdialog.diff
 }
 
 subport kf5-kwindowsystem {
@@ -1385,6 +1386,8 @@ subport kf5-kiconthemes {
     kf5.depends_frameworks \
                     karchive kconfigwidgets kcoreaddons \
                     ki18n kitemviews kwidgetsaddons
+    patchfiles-append \
+                    kiconthemes/patch-debug-current-icontheme.diff
 }
 
 subport kf5-kinit {
@@ -1957,6 +1960,8 @@ subport kf5-kxmlgui {
                     attica kconfig kconfigwidgets kcoreaddons kglobalaccel \
                     ki18n kiconthemes kitemviews ktextwidgets \
                     kwidgetsaddons kwindowsystem
+    patchfiles-append \
+                    kxmlgui/patch-kxmlgui-revert-4690808e65.diff
 }
 
 subport kf5-kxmlrpcclient {
