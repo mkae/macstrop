@@ -1,13 +1,13 @@
 diff --git CMakeLists.txt CMakeLists.txt
-index eede0a1..c5b8a04 100644
+index 1e1acc1..c3a8fa2 100644
 --- CMakeLists.txt
 +++ CMakeLists.txt
-@@ -24,148 +24,71 @@ include(ECMOptionalAddSubdirectory)
+@@ -24,155 +24,80 @@ include(ECMOptionalAddSubdirectory)
  include(ECMQtDeclareLoggingCategory)
  include(KDEPackageAppTemplates)
  
 +# 2nd line: FWs for DrKonqi
-+# 3rd line: additional FWs for the systray and notifications plugins (experimental)
++# 3rd line: additional FWs for kuiserver, kioslave, phonon, the systray and notifications plugins (experimental)
 +# 4th line: additional FWs for plasma-windowed
  find_package(KF5 ${KF5_MIN_VERSION} REQUIRED COMPONENTS
 -                    Plasma DocTools Runner JsEmbed NotifyConfig Su NewStuff Wallet KCMUtils
@@ -26,7 +26,7 @@ index eede0a1..c5b8a04 100644
 -find_package(KF5 REQUIRED COMPONENTS Package)
 -
 +                    I18n CoreAddons Service ConfigWidgets JobWidgets KIO Crash Completion WidgetsAddons Wallet XmlRpcClient WindowSystem IdleTime
-+                    IconThemes NotifyConfig GlobalAccel Wayland
++                    IconThemes NotifyConfig GlobalAccel Wayland Init
 +                    XmlGui Plasma PlasmaQuick DBusAddons Notifications DocTools)
 +if(NOT APPLE)
  find_package(KF5Baloo)
@@ -104,9 +104,22 @@ index eede0a1..c5b8a04 100644
 +      set(HAVE_X11 1)
 +    endif()
 +
++#     find_package(AppStreamQt 0.10.4)
++#     set_package_properties(AppStreamQt PROPERTIES DESCRIPTION "Access metadata for listing available software"
++#                            URL "https://www.freedesktop.org/wiki/Distributions/AppStream/"
++#                            TYPE OPTIONAL
++#                           )
++# 
 +    include(ConfigureChecks.cmake)
  endif()
  
+-find_package(AppStreamQt 0.10.4)
+-set_package_properties(AppStreamQt PROPERTIES DESCRIPTION "Access metadata for listing available software"
+-                       URL "https://www.freedesktop.org/wiki/Distributions/AppStream/"
+-		       TYPE OPTIONAL
+-                      )
+-
+-
 -include(ConfigureChecks.cmake)
 -
  include_directories("${CMAKE_CURRENT_BINARY_DIR}")
@@ -170,13 +183,13 @@ index eede0a1..c5b8a04 100644
  add_subdirectory(dataengines)
 -add_subdirectory(wallpapers)
 -
--add_subdirectory(kioslave)
--add_subdirectory(ktimezoned)
--add_subdirectory(kuiserver)
--add_subdirectory(menu)
--add_subdirectory(phonon)
--add_subdirectory(solidautoeject)
 +#snip
+ add_subdirectory(kioslave)
+-add_subdirectory(ktimezoned)
+ add_subdirectory(kuiserver)
+-add_subdirectory(menu)
+ add_subdirectory(phonon)
+-add_subdirectory(solidautoeject)
  add_subdirectory(drkonqi)
  
 -ecm_optional_add_subdirectory(xembed-sni-proxy)
@@ -312,30 +325,34 @@ index 9fcdb57..e673dde 100644
 +##   add_subdirectory(mouse)
 +##   add_subdirectory(systemmonitor)
 +## endif()
-diff --git runners/CMakeLists.txt runners/CMakeLists.txt
-index d7656c8..4ae8168 100644
---- runners/CMakeLists.txt
-+++ runners/CMakeLists.txt
-@@ -1,19 +1,14 @@
- add_subdirectory(activities)
--if(KF5Baloo_FOUND)
-- add_subdirectory(baloo)
--endif()
--add_subdirectory(bookmarks)
--add_subdirectory(calculator)
-+#snip
- add_subdirectory(locations)
- add_subdirectory(places)
- add_subdirectory(services)
- add_subdirectory(recentdocuments)
--add_subdirectory(shell)
--# add_subdirectory(solid)
-+#snip
- add_subdirectory(webshortcuts)
- add_subdirectory(windowedwidgets)
- #
--if(NOT WIN32)
-+if(NOT WIN32 AND NOT APPLE)
-  add_subdirectory(powerdevil)
-  add_subdirectory(sessions)
-  add_subdirectory(windows)
+diff --git kuiserver/CMakeLists.txt kuiserver/CMakeLists.txt
+index 0f7c29e..c59cfdd 100644
+--- kuiserver/CMakeLists.txt
++++ kuiserver/CMakeLists.txt
+@@ -51,13 +51,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.kde.kuiserver.service
+ kconfig_add_kcfg_files(kuiserver_KDEINIT_SRCS kuiserversettings.kcfgc)
+ 
+ kf5_add_kdeinit_executable( kuiserver5 ${kuiserver_KDEINIT_SRCS})
+-
+-if (Q_WS_MAC)
+-    set_target_properties(kuiserver5 PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/Info.plist.template)
+-    set_target_properties(kuiserver5 PROPERTIES MACOSX_BUNDLE_GUI_IDENTIFIER "org.kde.kuiserver")
+-    set_target_properties(kuiserver5 PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME "KDE UI Server")
+-endif ()
+-
++ecm_mark_nongui_executable(kuiserver5)
+ 
+ target_link_libraries(kdeinit_kuiserver5
+     Qt5::DBus
+diff --git shell/CMakeLists.txt shell/CMakeLists.txt
+index 2865548..f5c213c 100644
+--- shell/CMakeLists.txt
++++ shell/CMakeLists.txt
+@@ -70,6 +70,7 @@ qt5_add_dbus_interface(plasma_shell_SRCS ${krunner_xml} krunner_interface)
+ add_executable(plasmashell
+     ${plasma_shell_SRCS}
+ )
++ecm_mark_nongui_executable(plasmashell)
+ 
+ target_link_libraries(plasmashell
+  Qt5::Quick
