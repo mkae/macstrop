@@ -123,8 +123,8 @@ kf5.require_kf5compat -port kdevelop include/kdevplatform/kdevplatformversion.h
 if {(${subport} eq "${name}-devel") || (${subport} eq "${name}-${PARSER}-devel")} {
     fetch.type      git
     git.url         git://anongit.kde.org/kdevelop
-    git.branch      0c6c71c72873f6dd53841ed8649b772a46a2409a
-    version         5.1.1.23
+    git.branch      524cfcccf50f7af13d951d032d319be66554b79d
+    version         5.1.1.36
     depends_lib-append \
                     port:kf5-kdevplatform-devel
     if {${subport} eq "${name}-${PARSER}-devel"} {
@@ -291,7 +291,7 @@ if {(${subport} eq "${name}") || (${subport} eq "${name}-devel")} {
     # the build system will check for kdevelop-pg-qt, but the actual dependency appears
     # to be a run-time one on kdev-pg-qt.
     depends_build-append \
-                    path:include/kdevelop-pg-qt/kdevelop-pg-qt_version.h:kf5-kdevelop-pg-qt
+                    path:bin/kdev-pg-qt:kf5-kdevelop-pg-qt
     # # build dependency on Oxygen is only required when not building with the shipped icon (from Breeze)
     # depends_build-append \
     #                     ${kf5::oxygen-icons_dep}
