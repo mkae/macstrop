@@ -1,5 +1,4 @@
 # -*- coding: utf-8; mode: tcl; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4; truncate-lines: t -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
-# $Id: kf5-1.1.tcl 134210 2015-03-20 06:40:18Z mk@macports.org $
 
 # Copyright (c) 2015 The MacPorts Project
 # Copyright (c) 2015, 2016 R.J.V. Bertin
@@ -123,7 +122,7 @@ if {![ info exists kf5.release ]} {
 if {![ info exists kf5.plasma ]} {
     set kf5.plasma      5.10.2
     set kf5.latest_plasma \
-                        5.10.2
+                        5.10.3
 }
 
 platforms               darwin linux

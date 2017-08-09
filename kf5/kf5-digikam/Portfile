@@ -34,8 +34,8 @@ if {${subport} eq "${name}-devel"} {
         git.url     git://anongit.kde.org/digikam
     }
 #     v5.2.0-100-g9f08606
-    git.branch      9f08606952582930edcb785febad347db12bfbab
-    version         5.2.0.100
+    git.branch      1fafd8e2303b82362df410e75543ebd60390baa2
+    version         5.6.0.348
     distname        ${kf5.project}-5
     worksrcdir      ${kf5.project}-5
     patch.pre_args  -Np2
@@ -44,9 +44,9 @@ if {${subport} eq "${name}-devel"} {
     PortGroup       obsolete 1.0
 } else {
     conflicts       ${name}-devel
-    version         5.5.0 ; revision 2
-    checksums       rmd160  dec2ae931bdb9576f207cc9dd3e8f7e87ff27c87 \
-                    sha256  df9cbf1b8dbfb9235cebc97e77c02fcb1498c5a905c7fd3b9fb42fd7accc6252
+    version         5.6.0
+    checksums       rmd160  fad8948988c0639c63d3379151bf6a5a5405b8e3 \
+                    sha256  65bdd3f15668e314b852d523a0bf95da32450f31fcfda60da62e57d4622a663c
     master_sites    http://download.kde.org/stable/digikam/
     distname        ${kf5.project}-${version}
     patch.pre_args  -Np1
@@ -160,7 +160,8 @@ if {![variant_isset nativeQSP]} {
 configure.args-append \
                     -DENABLE_KFILEMETADATASUPPORT=ON \
                     -DENABLE_OPENCV3=ON \
-                    -DENABLE_MEDIAPLAYER=ON
+                    -DENABLE_MEDIAPLAYER=OFF \
+                    -DENABLE_DBUS=ON
 platform linux {
     configure.args-append \
                     -DBUILD_TESTING=OFF
@@ -183,12 +184,12 @@ if {[variant_isset docs]} {
 }
 
 patchfiles-append       patch-notdefined-syntax.diff
-
-patchfiles-append       patch-fix-qtav-detection.diff
+patchfiles-append       patch-disable-qtav.diff
 
 # Option to check MySQL availability before compiling target
 
 set use_msql            no
+
 configure.args-append   -DENABLE_INTERNALMYSQL=off -DENABLE_MYSQLSUPPORT=off
 
 variant mysql_check conflicts mariadb description {Check MySQL availability before building digiKam} {
@@ -208,6 +209,22 @@ variant mariadb conflicts mysql_check description {Use MariaDB instead of MySQL}
     configure.env-append    MYSQLD_PATH=${prefix}/lib/mariadb/bin MYSQL_TOOLS_PATH=${prefix}/lib/mariadb/bin
     set use_msql            yes
 }
+
+variant video description {Include video support} {
+    depends_lib-append      path:include/QtAV/QtAV.h:QtAV
+    patchfiles-replace      patch-disable-qtav.diff \
+                            patch-qtav-are-regular-libs.diff
+    configure.args-replace  -DENABLE_MEDIAPLAYER=OFF \
+                            -DENABLE_MEDIAPLAYER=ON
+}
+default_variants +video
+
+# ninja's single-build speed and resource usage don't compare favourably with good old make...
+# cmake.generator         CodeBlocks - Ninja
+# variant maintainer description {For use by the port maintainer} {
+#     cmake.generator         CodeBlocks - Unix Makefiles
+#     ui_info "Maintainer mode, using the CMake \"${cmake.generator}\" generator"
+# }
 
 # post-destroot {
 #     if {${use_msql}} {
@@ -230,16 +247,24 @@ post-patch {
         # Digikam already has provisions for "standard MacPorts install"s; make it more generic
         reinplace "s|/opt/local/|${prefix}/|g" ${worksrcpath}/${srcdir}/libs/database/utils/dbsettingswidget.cpp \
             ${worksrcpath}/${srcdir}/libs/dimg/filters/icc/iccprofile.cpp \
-            ${worksrcpath}/${srcdir}/utilities/setup/setupicc.cpp \
-            ${worksrcpath}/${srcdir}/utilities/assistants/expoblending/importwizard/expoblendingintropage.cpp \
-            ${worksrcpath}/${srcdir}/utilities/assistants/panorama/importwizard/panointropage.cpp
+            ${worksrcpath}/${srcdir}/utilities/setup/setupicc.cpp
     }
     platform linux {
         reinplace "s|/usr/local/|${prefix}/|g" ${worksrcpath}/${srcdir}/libs/database/utils/dbsettingswidget.cpp \
             ${worksrcpath}/${srcdir}/libs/dimg/filters/icc/iccprofile.cpp \
-            ${worksrcpath}/${srcdir}/utilities/setup/setupicc.cpp \
-            ${worksrcpath}/${srcdir}/utilities/assistants/expoblending/importwizard/expoblendingintropage.cpp \
-            ${worksrcpath}/${srcdir}/utilities/assistants/panorama/importwizard/panointropage.cpp
+            ${worksrcpath}/${srcdir}/utilities/setup/setupicc.cpp
+    }
+}
+
+if {[info procs cmake.save_configure_cmd] ne ""} {
+    post-configure {
+        set conflog ${workpath}/.macports.${subport}.configure.log
+        if {[file exists ${conflog}]} {
+            ui_info "Disabled features:"
+            system "fgrep '.. NO' ${conflog}"
+            ui_info "Enabled features:"
+            system "fgrep '.. YES' ${conflog}"
+        }
     }
 }
 

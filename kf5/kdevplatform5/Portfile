@@ -44,8 +44,8 @@ if {${subport} eq "${name}-devel"} {
 #     git.branch      576760bff6b91f3ea8121842a4d56036151a0f79
     ## switch to the 5.1 branch for now
     epoch           5.1
-    git.branch      6055d62d28df8f6da47a77d1e3f066a14c973db3
-    set release     5.1.1.43
+    git.branch      a11dc98c1d6e1e50926dc43f9d33d1a7c3fe3806
+    set release     5.1.1.100
     version         ${release}
     worksrcdir      ${name}-5
     distname        ${name}-5
@@ -150,7 +150,6 @@ if {${subport} eq "${name}-translations"} {
                         patch-prevent-patchreview-crash.diff \
                         patch-outputfilteringstrats.diff \
                         patch-avoid-duchain-hang-on-exit.diff \
-                        patch-mark-nongui-execs.diff \
                         patch-constrain-bg-parser-threads.diff \
                         patch-projectman-shortcuts-simple.diff \
                         patch-grep-improved-exclude-filter.diff
@@ -190,7 +189,12 @@ if {${subport} eq "${name}-translations"} {
         patchfiles-append \
                         devel/patch-docswitcher-shortcuts.diff
         patchfiles-append \
-                        devel/patch-projman-horizscroll.diff
+                        devel/patch-projman-horizscroll.diff \
+                        devel/patch-x11-no-dockmenu.diff
+        patchfiles-delete \
+                        patch-avoid-duchain-hang-on-exit.diff
+        patchfiles-append \
+                        ${PPREFIX51}/patch-typereg-debug.diff
     }
     # try to hide the documentation toolview (toolbar item) by default
     patchfiles-append   patch-docview-hidden-by-default.patch
@@ -201,8 +205,6 @@ if {${subport} eq "${name}-translations"} {
 
     # https://phabricator.kde.org/D6398
     patchfiles-append   ${PPREFIX51}/patch-fix-preview-highlighting.diff
-    # https://phabricator.kde.org/D6529
-    patchfiles-append   ${PPREFIX51}/patch-windowfilepath-and-dockmenu.diff
 
     variant apidocs description {Generate the API documentation} {}
     if {![variant_isset apidocs]} {
