@@ -1,0 +1,113 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+set qt5.no_LTO_variant 1
+PortGroup           qt5 1.0
+PortGroup           cmake 1.1
+PortGroup           github 1.0
+
+name                qmplay2
+
+description         A Qt5-based video and audio player.
+long_description    QMPlay2 is a video and audio player. It can play all formats \
+                    supported by FFmpeg, libmodplug (including J2B and SFX). It also \
+                    supports Audio CD, raw files, Rayman 2 music and chiptunes. It \
+                    contains YouTube and Prostopleer browsers.
+license             LGPL-3
+maintainers         gmail.com:rjvbertin openmaintainer
+platforms           darwin linux
+
+subport             ${name}-devel {
+    long_description A QMPlay2 port aimed at development purposes.
+}
+
+
+if {${subport} eq "${name}"} {
+    github.setup    zaps166 QMPlay2 17.06.09
+    checksums       rmd160  6e48efcdbf437fa97b51195ed4ff16e1f3c655fd \
+                    sha256  2ebdcdb4df4aa712b5fb5a053e349be52d0cfa1459762927a442942d2fa37b59
+} else {
+    github.setup    RJVB QMPlay2 118735d0b6ab6428951d452169f424ea91dc72b3
+    version         17.07.25.7
+    # this port is intended to facilitate development efforts shared with "upstreams"
+    # so using git instead of a tarball fetch type is more appropriate.
+    fetch.type      git
+    distname        qmplay2-git
+}
+
+cmake.save_configure_cmd
+
+configure.args-append \
+                    -DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON \
+                    -DUSE_QT5=ON \
+                    -DUSE_FFMPEG_AVDEVICE=ON \
+                    -DUSE_CUVID=ON \
+                    -DUSE_JEMALLOC=ON \
+                    -DCMAKE_STRIP:FILEPATH=/bin/echo
+
+if {![variant_exists LTO]} {
+    variant LTO description {Build with link-time optimisation} {}
+}
+if {[variant_isset LTO]} {
+    configure.args-append \
+                    -DUSE_LINK_TIME_OPTIMIZATION=ON
+}
+
+platform linux {
+    cmake.install_rpath-prepend \
+                    ${qt_libs_dir}
+    # activate portaudio support on Linux too
+    configure.args-append \
+                    -DUSE_PORTAUDIO=ON
+    # don't use the buildsystem's rpath support
+    # (it will install only a single path)
+    configure.args-append \
+                    -DSET_INSTALL_RPATH=OFF
+    variant libcxx description {highly experimental option to build against libc++. \
+            Requires using clang and an independently provided libc++ installation.} {
+        configure.cxx_stdlib \
+                        libc++
+    }
+}
+
+qt5.depends_component \
+                    qtsvg qttools
+depends_lib-append  port:ffmpeg \
+                    port:portaudio \
+                    port:jemalloc
+
+patch.pre_args      -Np1
+patchfiles-append   patch-macports-build.diff
+
+if {${subport} eq "${name}"} {
+    # add support for outputting bit-perfect audio (adapt output device SR, don't resample content) (WIP)
+    patchfiles-append   patch-bitperfect.diff
+
+    # optims: faster read-only access to QByteArray data
+    # (the optim. for the PortAudio module is included in the bitperfect patch
+    patchfiles-append   patch-optims.diff
+}
+
+platform darwin {
+    ## build system is set up to create a standalone, all-inclusive app bundle!
+    depends_lib-append \
+                    port:libass \
+                    port:taglib \
+                    port:libcdio \
+                    port:libcddb
+
+    configure.args-append \
+                    -DUSE_PULSEAUDIO=OFF \
+                    -DBUNDLE_INSTALL_DIR=${qt_apps_dir} \
+                    -DUSE_XVIDEO=OFF
+    post-destroot {
+        file rename ${destroot}${qt_apps_dir}/QMPlay2.app/Contents/MacOS/libqmplay2.dylib ${destroot}${prefix}/lib/
+        # install a wrapper script in ${prefix}/bin
+        if {[info procs "qt5.add_app_wrapper"] ne ""} {
+            qt5.add_app_wrapper QMPlay2
+        } else {
+            system "echo \"#!/bin/sh\nexec \\\"${qt_apps_dir}/QMPlay2.app/Contents/MacOS/QMPlay2\\\" \\\"\\\$\@\\\"\" > ${destroot}${prefix}/bin/QMPlay2"
+            system "chmod 755 ${destroot}${prefix}/bin/QMPlay2"
+        }
+    }
+}
