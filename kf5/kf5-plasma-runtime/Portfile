@@ -7,18 +7,19 @@ PortSystem          1.0
 set kf5.project     plasma-workspace
 set kf5.virtualPath plasma
 PortGroup           kf5 1.1
-kf5.use_latest      plasma
+# kf5.use_latest      plasma
 
 # use a more descriptive port name
 name                kf5-plasma-runtime
 
-description         KF5 Plasma workspace runtime utilities like the DrKonqi crash reporter.
-long_description    This port provides a few useful KF5 Plasma workspace runtime utilities like the DrKonqi crash reporter.
+description         KF5 Plasma workspace runtime utilities.
+long_description    This port provides a few useful (?) KF5 Plasma workspace runtime utilities.\
+                    The DrKonqi crash reporter now lives in its own port.
 
-checksums           rmd160  a4f14da1cd8657b35e42d044ed648a40e9278f9f \
-                    sha256  69d7513ad0ba0acc224cd0dee824795c20e8733f52704e3cf3dca5f6ae6cdf71
+checksums           rmd160  af55cf93d34b48fedef7af114d21945bf26fa9e1 \
+                    sha256  3e72409aa480079325905d36ceadafc9cbdfaf955d62c16c12b6a29f7b5bc4bb
 
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         gmail.com:rjvbertin openmaintainer
 
 kf5.depends_qt5_components \
                     qtdeclarative qtscript
@@ -43,11 +44,9 @@ kf5.allow_apidocs_generation no
 
 patchfiles-append   patch-only-useful.diff
 
-# https://phabricator.kde.org/D4929 (both patches):
-patchfiles-append   patch-preserve-icons-and-forceforeground.diff \
-                    patch-support-for-lldb.diff
-# https://bugs.kde.org/show_bug.cgi?id=381566
-patchfiles-append   patch-kioslave-desktoplocation.diff
+# # https://phabricator.kde.org/D4929 (both patches):
+# patchfiles-append   patch-preserve-icons-and-forceforeground.diff \
+#                     patch-support-for-lldb.diff
 
 # teach DrKonqi the alternate app name endings it might encounter the way we install
 # patchfiles-append   patch-drkonqi-altendings.diff
@@ -55,9 +54,7 @@ patchfiles-append   patch-kioslave-desktoplocation.diff
 post-extract {
     foreach lang [glob -nocomplain -directory ${worksrcpath}/po *] {
         foreach app [glob -nocomplain ${lang}/*.po] {
-            if {[file tail ${app}] ne "drkonqi.po"} {
-                file delete -force ${app}
-            }
+            file delete -force ${app}
         }
     }
 }
@@ -82,9 +79,6 @@ post-destroot {
     if {[file exist ${destroot}${prefix}/share/doc]} {
         # there's nothing of interest for us in the docs ...
         file delete -force ${destroot}${prefix}/share/doc
-    }
-    platform darwin {
-        xinstall -m 755 ${filespath}/AppleTerminal.sh ${destroot}${prefix}/bin/AppleTerminal
     }
 }
 

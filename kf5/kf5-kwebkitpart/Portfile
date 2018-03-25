@@ -36,10 +36,12 @@ if {${subport} eq "${name}-devel"} {
     } else {
         git.url     git://anongit.kde.org/${kf5.project}
     }
-    # v1.3.4-55-gc632694
-    git.branch      c632694c95dbc9b649a05a02dc3a6c7910bcedbb
-    version         1.3.4.55
+    # v1.3.4-88-gcca571d
+    git.branch      cca571d4316b636029a26dcb710fad705fa63ed4
+    version         1.3.4.88
     epoch           160228
+    worksrcdir      ${name}-5
+    distname        ${name}-5
 } else {
     version         0
     conflicts       ${name}-devel
@@ -54,12 +56,7 @@ if {${subport} eq "${name}-devel"} {
     }
 }
 
-worksrcdir          ${name}-5
-distname            ${name}-5
-
 patch.pre_args      -Np1
-
-patchfiles-append   
 
 variant apidocs description {Generate the API documentation} {
     kf5.allow_apidocs_generation yes

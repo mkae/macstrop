@@ -1,27 +1,26 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id$
 # Copyright (c) 2015, 2016 R.J.V. Bertin
 
 PortSystem          1.0
 
 variant qtonly conflicts replace_cocoa kdedialogs description {build only the Qt plugins} {}
 
+name                kf5-osx-integration
+license             LGPL-3
+
 if {[variant_isset qtonly]} {
     # even in this case we probably prefer to install qt5-kde
     # if no Qt5 port is installed yet.
     set qt5.prefer_kde  1
-    PortGroup           qt5 1.0
-    PortGroup           cmake 1.1
+    PortGroup       qt5 1.0
+    PortGroup       cmake 1.1
 
-    name                kf5-osx-integration
-    license             LGPL-3
 } else {
-    set kf5.project     osx-integration
-    set kf5.virtualPath scratch
-    set kf5.category    integration
-    PortGroup           kf5 1.1
-    license-append      LGPL-3
+    PortGroup       kf5 1.1
 }
+
+# include the github PG after the KF5 PG!
+PortGroup           github 1.0
 
 # in case of unexpected behaviour, set QT_DEBUG_PLUGINS=1
 # cf. http://doc.qt.io/qt-5/deployment-plugins.html#debugging-plugins
@@ -36,11 +35,8 @@ long_description    This port contains an OS X adaptation of KDE's platform them
                     The port also provides modified versions of Qt's Cocoa platform plugin and \
                     'native' Macintosh widget style, providing among others improved support for \
                     less-common font-weights and named menu sections.
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         gmail.com:rjvbertin openmaintainer
 homepage            https://cgit.kde.org/osx-integration.git/
-
-# plugins are not libraries even if technically they're almost exactly the same thing
-installs_libs       no
 
 subport ${name}-devel {}
 
@@ -57,17 +53,23 @@ long_description-append \n\
 
 if {${subport} eq "${name}-devel"} {
     conflicts       ${name}
+    github.setup    RJVB osx-integration 0266b2baecb44e3c10b40870a626b49f1126545b
     fetch.type      git
-    git.url         git://anongit.kde.org/osx-integration
+    git.url         git://github.com/RJVB/osx-integration
     # master branch has Qt plugins from Qt 5.8.0
     # git.branch      c8d5bdbd9a9bdf4d80a98cf8f29f3000616b3074
     # version         5.31.38
     # qt590 branch has plugins from Qt 5.9 (follows the qtbase/5.9 branch "at a distance")
-    git.branch      cd4ec888d8540a508bfd0be0755fe98a7c37f724
-    version         5.31.110
+    version         5.11.2.50
+    # we've adopted the plasma-integration version tagging scheme since #aed2524934c3692ffccec0642f2e981ce00da491
+    # this probably makes more sense than following KF5 framework versioning "at a distance"
+    # which evolves on a completely independent and much faster clock.
+    epoch           2
     worksrcdir      ${name}-5
     distname        ${name}-5
 } else {
+    github.setup    RJVB osx-integration 0
+    github.tarball_from releases
     version         0
     conflicts       ${name}-devel
     checksums       rmd160  0 \
@@ -85,6 +87,16 @@ if {![variant_isset qtonly]} {
     kf5.depends_frameworks \
                     kconfig kconfigwidgets ki18n kiconthemes \
                     kio knotifications kwidgetsaddons
+    variant crashreporter description {link with the Plausible CrashReporter (pointless in combination with port:kf5-plasma-runtime)} {}
+    if {[variant_isset crashreporter]} {
+        depends_lib-append \
+                    path:Library/Frameworks/CrashReporter.framework/CrashReporter:plcrashreporter
+        configure.args-append \
+                    -DUSE_PLCRASHREPORTER=ON
+    } else {
+        configure.args-append \
+                    -DUSE_PLCRASHREPORTER=OFF
+    }
 }
 
 # taken from the qt5-kde Portfile
@@ -132,7 +144,8 @@ configure.args-append \
                     -DDEFINE_ICONTHEME_SETTINGS=ON \
                     -DPREFER_NATIVE_DIALOGS=ON \
                     -DOVERRIDE_NATIVE_THEME=OFF \
-                    -DEMULATE_MENU_KEY=OFF
+                    -DEMULATE_MENU_KEY=OFF \
+                    -DHAVE_INFINALITY=OFF
 
 variant kdedialogs conflicts qtonly description {prefer KDE over native dialogs} {
     configure.args-replace \
@@ -156,6 +169,22 @@ variant menukey \
                     -DEMULATE_MENU_KEY=ON
 }
 
+variant infinality \
+    description "FreeType and FontConfig have been installed with the Infinality+Ultimate patches" {
+    configure.args-replace \
+                    -DHAVE_INFINALITY=OFF \
+                    -DHAVE_INFINALITY=ON
+}
+if {[file exists ${prefix}/share/fonts/fontconfig-ultimate/infinality-settings.sh]} {
+    default_variants-append \
+                    +infinality
+}
+
+post-destroot {
+    xinstall -m 755 -d ${destroot}${prefix}/share/doc/${subport}
+    xinstall -m 644 ${worksrcpath}/README.md ${destroot}${prefix}/share/doc/${subport}/
+}
+
 if {![variant_isset qtonly]} {
     default_variants +menukey
 
@@ -172,8 +201,17 @@ easily from in a terminal session. Those scripts can load a file \"~/.kf5.env\" 
 a sample is provided (${filespath}/sample.kf5.env).\n\
 Controlling environment variables:\n\
 QT_QPA_PLATFORMTHEME_VERBOSE=1 : enable verbose mode\n\
-QT_QPA_PLATFORMTHEME_CONFIG_FILE=foo : read configuration from a file named foo instead of `kdeglobals` in the standard location (~/.config).\
-A sample configuration file is provided (${filespath}/sample_native.kdeglobals)."
+QT_QPA_PLATFORMTHEME_CONFIG_FILE=foo : read configuration from a file named foo (= not a full path!) instead of `kdeglobals` in the standard location (~/.config).\
+A sample configuration file is provided (${filespath}/sample_native.kdeglobals, to be installed as ~/.config/kdeglobals)."
+    if {![variant_isset kdedialogs]} {
+        notes-append \
+"Start applications with PREFER_KDE_DIALOGS=1 to make them use KDE dialogs."
+    }
+    if {[variant_isset crashreporter]} {
+        notes-append \
+"\nThe platform theme plugin will leverage the Plausible CrashReporter in a basic way.\
+Please note that this facility will be overridden by DrKonqi if port:kf5-plasma-runtime is installed."
+    }
 }
 
 livecheck.type      none

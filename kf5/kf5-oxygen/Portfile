@@ -8,12 +8,12 @@ PortSystem          1.0
 name                kf5-oxygen
 description         Oxygen style/theme.
 long_description    Oxygen style/theme, also providing the standard notification sounds.
-checksums           rmd160  6b941a2413b00e9f4afec79d2674f0b308a25879 \
-                    sha256  373842080580abd9bebf16ae1653aaba8e657b1c1cfe4573ee79a95d64cba321
+checksums           rmd160  9830a4ad17faf9cdb46e34b738e398dd02a03baf \
+                    sha256  3f0544c0376ac98f063dca14f7c0414a69cff775b1e67e4033922d5630a17e2c
 
 subport kde4-oxygen {
     # normally set by the KF5 PG:
-    version         5.10.2
+    version         5.11.1
     description-prepend \
                     KDE4 version of the
     long_description \
@@ -21,13 +21,12 @@ subport kde4-oxygen {
     license         GPL2+
 }
 
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         gmail.com:rjvbertin openmaintainer
 
 if {${subport} eq "kf5-oxygen"} {
     set kf5.project     oxygen
     set kf5.virtualPath plasma
     PortGroup           kf5 1.1
-    revision            1
     kf5.use_latest      plasma
 
     depends_lib-append  port:kf5-kdecoration

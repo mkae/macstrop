@@ -1,0 +1,43 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+# Copyright (c) 2015, 2016 R.J.V. Bertin
+
+PortSystem          1.0
+
+set kf5.project     kgpg
+set kf5.virtualPath applications
+set kf5.category    utilities
+PortGroup           kf5 1.1
+# freezing the port for now
+set kf5.latest_release \
+                    17.08.3
+kf5.use_latest      applications    ;# shunted to 17.08.3
+
+conflicts           kgpg
+
+maintainers         gmail.com:rjvbertin openmaintainer
+
+installs_libs       no
+
+description         Control your GPG keys, KF5 version.
+long_description    KGpg is a simple interface for GnuPG, a powerful encryption utility.
+homepage            https://utils.kde.org/projects/kgpg
+
+checksums           rmd160  2317d4fda47d157489dda277072c1ed4866212dc \
+                    sha256  f0f0156c1232763934d4ea8a126c26b71d791e3e567df16ea56a639ca2b106bc
+
+depends_lib-append  port:gpgme \
+                    port:kf5-akonadi-contacts \
+                    port:kf5-libkcontacts
+
+kf5.depends_frameworks \
+                    karchive kcodecs kcoreaddons kcrash \
+                    kdbusaddons kdoctools ki18n kiconthemes \
+                    kio kjobwidgets knotifications kservice \
+                    ktextwidgets kwidgetsaddons kwindowsystem kxmlgui
+
+kf5.allow_apidocs_generation no
+
+patchfiles-append   patch-temp-fixes.diff
+post-destroot {
+    kf5.add_app_wrapper kgpg5 kgpg
+}

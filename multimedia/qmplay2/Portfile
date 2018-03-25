@@ -23,19 +23,25 @@ subport             ${name}-devel {
 
 
 if {${subport} eq "${name}"} {
-    github.setup    zaps166 QMPlay2 17.06.09
-    checksums       rmd160  6e48efcdbf437fa97b51195ed4ff16e1f3c655fd \
-                    sha256  2ebdcdb4df4aa712b5fb5a053e349be52d0cfa1459762927a442942d2fa37b59
+    github.setup    zaps166 QMPlay2 17.12.31
+    checksums       rmd160  ae99e94899d83809dd2d11c46e2faf94cc3f4a1f \
+                    sha256  12675f054ed126ffbda9a96e710331f206b5fbb142967207e3653d3cef2ae45e
+    replaced_by     ${name}-devel
+    PortGroup       obsolete 1.0
 } else {
-    github.setup    RJVB QMPlay2 118735d0b6ab6428951d452169f424ea91dc72b3
-    version         17.07.25.7
+    # we should go back to using the main repo now that the bitperfect patch has been upstreamed
+    # ===> defer upgrades until upstream has caught up with the 27 commits lag (-> v18.02.03-103).
+    # ===> do this with revbumps
+    github.setup    RJVB QMPlay2 88ddded763ebead26f49bf673a035d71876e1ed7
+    # master v18.02.03-95-g0dd4dbab
+    version         18.02.03.102 ; revision 2
     # this port is intended to facilitate development efforts shared with "upstreams"
     # so using git instead of a tarball fetch type is more appropriate.
     fetch.type      git
     distname        qmplay2-git
 }
 
-cmake.save_configure_cmd
+cmake.save_configure_cmd "log too"
 
 configure.args-append \
                     -DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON \
@@ -64,9 +70,14 @@ platform linux {
     configure.args-append \
                     -DSET_INSTALL_RPATH=OFF
     variant libcxx description {highly experimental option to build against libc++. \
-            Requires using clang and an independently provided libc++ installation.} {
+            Requires using clang and an independently provided libc++ installation.} {}
+    if {[variant_isset libcxx]} {
         configure.cxx_stdlib \
                         libc++
+        configure.cxxflags-delete \
+                    -stdlib=libstdc++
+        configure.cxxflags-append \
+                    -stdlib=libc++
     }
 }
 
@@ -82,11 +93,10 @@ patchfiles-append   patch-macports-build.diff
 if {${subport} eq "${name}"} {
     # add support for outputting bit-perfect audio (adapt output device SR, don't resample content) (WIP)
     patchfiles-append   patch-bitperfect.diff
-
-    # optims: faster read-only access to QByteArray data
-    # (the optim. for the PortAudio module is included in the bitperfect patch
-    patchfiles-append   patch-optims.diff
 }
+
+# make sure Qt logging messages don't get lost when running from the app bundle
+patchfiles-append   patch-log-to-syslog.diff
 
 platform darwin {
     ## build system is set up to create a standalone, all-inclusive app bundle!

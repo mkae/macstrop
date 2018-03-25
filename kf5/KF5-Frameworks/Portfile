@@ -10,7 +10,7 @@ PortGroup           code-sign 1.0
 # kf5.latest_version is used only in this Portfile and is different
 # from kf5.version when the KF5 Frameworks are being upgraded.
 set kf5.latest_version \
-                    5.35.0
+                    5.42.0
 
 name                KF5-Frameworks
 version             ${kf5.version}
@@ -18,7 +18,7 @@ set kf5::cat        KF5-Frameworks
 categories-append   ${kf5::cat}
 description         meta-port for the KDE Frameworks Version ${kf5.version}
 long_description    ${description}
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         gmail.com:rjvbertin openmaintainer
 
 installs_libs       yes
 if {${os.platform} eq "darwin"} {
@@ -28,15 +28,18 @@ if {${os.platform} eq "darwin"} {
 }
 
 # mapping framework names to their tier; entries in build order
-set kf5::tier1_frameworks {kapidox attica karchive kcodecs kconfig kcoreaddons kdbusaddons kdnssd kguiaddons ki18n kidletime kimageformats kitemmodels kitemviews kplotting ksyntaxhighlighting kwidgetsaddons kwindowsystem solid sonnet threadweaver}
+set kf5::tier1_frameworks {kapidox attica karchive kcodecs kconfig kcoreaddons \
+    kdbusaddons kdnssd kguiaddons ki18n kidletime kimageformats kitemmodels \
+    kitemviews kplotting ksyntaxhighlighting kuserfeedback kwidgetsaddons \
+    kwindowsystem qqc2-desktop-style solid sonnet threadweaver}
 # platform linux {
     set kf5::tier1_frameworks [lappend kf5::tier1_frameworks kwayland]
 # }
 # kgenapidox is a fossil:
 set kf5::tier1_frameworks [lappend kf5::tier1_frameworks kgenapidox]
 set kf5::tier2_frameworks {kauth kcompletion kcrash kdoctools kfilemetadata kjobwidgets knotifications kpackage kpty kunitconversion}
-set kf5::tier3_frameworks {kconfigwidgets kiconthemes kservice kglobalaccel ktextwidgets kxmlgui kbookmarks kwallet kio baloo kactivities kdeclarative kcmutils kinit kded kparts kdewebkit kdesignerplugin kdesu kemoticons knewstuff knotifyconfig kpeople plasma-framework ktexteditor kxmlrpcclient krunner}
-set kf5::tier3_frameworks [lappend kf5::tier3_frameworks kirigami kirigami2]
+set kf5::tier3_frameworks {kconfigwidgets kiconthemes kservice kglobalaccel ktextwidgets kxmlgui kbookmarks kwallet kio baloo kactivities kactivities-stats kdeclarative kcmutils kinit kded kparts kdewebkit kdesignerplugin kdesu kemoticons knewstuff knotifyconfig kpeople plasma-framework kirigami2 ktexteditor kxmlrpcclient krunner}
+set kf5::tier3_frameworks [lappend kf5::tier3_frameworks kirigami]
 set kf5::tier4_frameworks {frameworkintegration}
 set kf5::portingAid_frameworks {kdelibs4support kjs khtml kross}
 
@@ -130,6 +133,7 @@ if {![info exists checksums.table]} {
 
 # read the checksums from a file
 if {[file exists ${filespath}/${checksums.table}]} {
+    ui_debug "Reading checksums from ${filespath}/${checksums.table}"
     source ${filespath}/${checksums.table}
 }
 
@@ -184,6 +188,21 @@ if {(${os.platform} eq "darwin") && [variant_isset nativeQSP]} {
 
 patch.pre_args      -Np0
 
+# currently we do not support python bindings generation
+configure.args-append \
+                    -DCMAKE_DISABLE_FIND_PACKAGE_PythonModuleGeneration=ON \
+                    -DBUILD_QCH=OFF
+
+## documentation building could be handled as shown below but it wouldn't
+## be trivial to determine from the generic +docs handler (KF5 PG) if this
+## was done (successfully). It would also require moving the generated files
+## from the Qt5 into the KF5 docs dir. For now we stick with our own recipe.
+# if {[variant_isset docs]} {
+#     configure.args-replace \
+#                     -DBUILD_QCH=OFF \
+#                     -DBUILD_QCH=ON
+# }
+
 post-destroot {
     if {[variant_exists examples] && [variant_isset examples] && [file exists ${build.dir}/examples]} {
         ui_debug "Installing examples"
@@ -227,11 +246,16 @@ subport kf5-attica {
     kf5::set_checkums
     conflicts-append \
                     attica-qt5
+# this was used on Mac upto (incl) 5.35.0 . Test if it was ever actually required!
     platform darwin {
         # this patch currently breaks things on linux:
         # https://git.reviewboard.kde.org/r/127822/
-        patchfiles-append \
-                    attica/patch-camelcase-headers-location.diff
+        post-patch {
+            ui_warn "camelCase headerfile location is no longer changed"
+        }
+        notes-append "camelCase headerfile location is no longer changed!"
+        #         patchfiles-append \
+#                     attica/patch-camelcase-headers-location.diff
     }
 }
 
@@ -465,8 +489,6 @@ subport kf5-kcoreaddons {
     kf5::set_checkums
     depends_lib-append \
                     port:shared-mime-info
-    patchfiles-append \
-                    kcoreaddons/patch-kdirwatch-dtor.diff
     platform darwin {
         configure.args-append \
                     -DKDE4_DEFAULT_HOME=Library/Preferences/KDE
@@ -645,6 +667,39 @@ subport kf5-ksyntaxhighlighting {
     }
 }
 
+subport kf5-kuserfeedback-devel {
+    description     A KDE framework for collecting feedback from application users via telemetry and targeted surveys.
+    long_description \
+                    This is a framework for collecting feedback from application users via telemetry \
+                    and targeted surveys. It provides an extensible set of data sources for telemetry \
+                    and full control for the user on what data to contribute. It allows to distribute \
+                    surveys and offer users to participate in them. Survey targeting can be based on \
+                    telemetry data and users can configure how often they want to participate in surveys. \
+                    This framework consists of the following components: libraries for use in applications\; \
+                    QML bindings for the above\; a server application\; a management and analytics application.
+    conflicts-append \
+                    kf5-kuserfeedback-style
+    set kf5.framework \
+                    kuserfeedback
+    fetch.type      git
+    git.branch      2bc329a687c7e45ff2e9da37e29c42d4fa89e249
+    version         5.38.0
+    kf5.depends_qt5_components \
+                    qtdeclarative qtsvg qtcharts
+    patch.pre_args  -Np1
+    patchfiles-append \
+                    kuserfeedback/patch-kuserfb-macadapt.diff
+    platform darwin {
+        depends_run-append \
+                    port:flex \
+                    port:bison \
+                    port:php
+    }
+    post-destroot {
+        kf5.add_app_wrapper UserFeedbackConsole5 UserFeedbackConsole
+    }
+}
+
 subport kf5-kwidgetsaddons {
     description     A large set of desktop widgets
     long_description \
@@ -661,7 +716,6 @@ subport kf5-kwidgetsaddons {
                     kwidgetsaddons
     kf5::set_checkums
     patchfiles-append \
-                    kwidgetsaddons/patch-kwidgaddons-pack-pwdialog.diff \
                     kwidgetsaddons/patch-kwidgaddons-nonative-colourdialog.diff
 }
 
@@ -733,11 +787,9 @@ subport kf5-kwindowsystem-devel {
     set kf5.framework \
                     kwindowsystem
     fetch.type      git
-#     # v4.100.0-rc1-204-g536f092
-#     git.branch      536f0924de3a33c9ab7c0658e6658f17cddca1d6
-#     v4.100.0-rc1-220-g0196c66
-    git.branch      0196c6642bce1d6d43b1d34035e95e8e688ec241
-    version         5.35.0.4.100.0.220
+    # v4.100.0-rc1-252-gd57087f
+    git.branch      d57087fd04cd57286c1adb0b1ba95a83158cec15
+    version         5.42.0.4.100.0.252
     platform darwin {
         test.cmd    echo
         test.target no tests for this framework
@@ -778,6 +830,24 @@ subport kf5-kwindowsystem-devel {
     }
 }
 
+subport kf5-qqc2-desktop-style-devel {
+    description     A KDE QtQuickControls2 style that integrates with the desktop.
+    long_description \
+                    This port provides a style for QtQuicControls2 that uses QStyle \
+                    to paint the controls in order to give it a native look and feel \
+                    as selected via the style KCM. Set QT_QUICK_CONTROLS_STYLE=org.kde.desktop \
+                    in the environment to activate this feature.
+    conflicts-append \
+                    kf5-qqc2-desktop-style
+    set kf5.framework \
+                    qqc2-desktop-style
+    fetch.type      git
+    git.branch      859dd6780c7006278a3863bf39317d2c4022a6e2
+    version         5.38.0
+    kf5.depends_qt5_components \
+                    qtdeclarative
+}
+
 subport kf5-solid {
     description     Desktop hardware abstraction
     long_description \
@@ -788,13 +858,13 @@ subport kf5-solid {
                     solid
     kf5::set_checkums
     ifplatform darwin {
-        revision    1
         depends_build-append \
                     port:flex \
                     port:bison
         patch.pre_args -Np1
+        # https://phabricator.kde.org/D7401
         patchfiles-append \
-                    solid/patch-iokit-backend.diff
+                    solid/patch-solid-iokit-backend.diff
     } else {
         patchfiles-append \
                     solid/patch-solid-xdgdatadirs.diff
@@ -819,22 +889,37 @@ subport kf5-sonnet {
     set kf5.framework \
                     sonnet
     kf5::set_checkums
+    patch.pre_args  -Np1
+    patchfiles-append \
+                    sonnet/patch-use-qosmacos.diff \
+                    sonnet/patch-dont-impose-defaultclient.diff \
+                    sonnet/patch-improved-nsspellchk-plugin.diff \
+                    sonnet/patch-modernise-hunspell.diff
     platform darwin {
-        # this patch should be submitted upstream
+        # this patch submitted upstream but not getting much traction
         # https://git.reviewboard.kde.org/r/127635/
         patchfiles-append \
-                    patch-sonnet-use-qsettings-iniformat.diff
+                    sonnet/patch-sonnet-use-qsettings-iniformat.diff
+        configure.args-append \
+                    -DCMAKE_DISABLE_FIND_PACKAGE_ASPELL=ON \
+                    -DCMAKE_DISABLE_FIND_PACKAGE_HUNSPELL=ON
         # backend variants. Don't attempt to deactivate non-selected backends for now.
-        variant aspell description {build the aspell backend} {
+        variant aspell description {build the aspell backend. Can interfere with the native NSSpellChecker backend} {
             depends_lib-append \
                     port:aspell
+            configure.args-replace \
+                    -DCMAKE_DISABLE_FIND_PACKAGE_ASPELL=ON \
+                    -DCMAKE_DISABLE_FIND_PACKAGE_ASPELL=OFF
         }
         variant hunspell description {build the hunspell backend} {
             depends_lib-append \
                     port:hunspell
+            configure.args-replace \
+                    -DCMAKE_DISABLE_FIND_PACKAGE_HUNSPELL=ON \
+                    -DCMAKE_DISABLE_FIND_PACKAGE_HUNSPELL=OFF
         }
         default_variants-append \
-                    +aspell
+                    +hunspell
     }
 }
 
@@ -889,6 +974,9 @@ subport kf5-kauth {
     kf5::set_checkums
     kf5.depends_frameworks \
                     kcoreaddons
+    # fix for 5.42.0
+    patchfiles-append \
+                    kauth/patch-fix-5420.diff
     ifplatform darwin {
         notes-append "
             !!!
@@ -925,6 +1013,8 @@ subport kf5-kcompletion {
     kf5::set_checkums
     kf5.depends_frameworks \
                     kconfig kwidgetsaddons
+    patchfiles-append \
+                    kcompletion/patch-completion-layering.diff
 }
 
 subport kf5-kcrash {
@@ -1057,7 +1147,8 @@ subport kf5-knotifications {
     # awaiting brilliant ideas: https://git.reviewboard.kde.org/r/128043/
     # https://phabricator.kde.org/D5070
     patchfiles-append \
-                    knotifications/patch-knotifications-better-sound-warning+support-sysbeep.diff
+                    knotifications/patch-knotifications-better-sound-warning+support-sysbeep.diff \
+                    knotifications/patch-knotifications-systray-behaviour.diff
     test.cmd        echo
     test.target     no tests for this framework
 }
@@ -1127,6 +1218,7 @@ subport kf5-baloo {
     platform darwin {
         depends_lib-append \
                     port:lmdb
+#         https://commits.kde.org/baloo/60e6cdedd2899f0b77d1e8808393f887af3a46fe
         patchfiles-append \
                     baloo/patch-baloo-nongui-execs.diff
         post-destroot {
@@ -1160,10 +1252,8 @@ subport kf5-kactivities {
     set kf5.framework \
                     kactivities
     kf5::set_checkums
-    platform darwin {
-        depends_lib-append \
+    depends_lib-append \
                     port:boost
-    }
     kf5.depends_qt5_components \
                     qtdeclarative
     kf5.depends_frameworks \
@@ -1185,6 +1275,25 @@ subport kf5-kactivities {
             }
         }
     }
+    test.cmd        echo
+    test.target     no tests on OS X for this framework
+}
+
+subport kf5-kactivities-stats {
+    description     Library to access the usage statistics data collected by the KDE activity manager.
+    long_description \
+                    ${description}. Support outside of \"Plasma\" sessions \
+                    is limited to just that\; this port and framework only \
+                    exist to satisfy linker dependencies.
+    set kf5.framework \
+                    kactivities-stats
+    kf5::set_checkums
+    depends_lib-append \
+                    port:boost
+    kf5.depends_qt5_components \
+                    qtdeclarative
+    kf5.depends_frameworks \
+                    kconfig kactivities
     test.cmd        echo
     test.target     no tests on OS X for this framework
 }
@@ -1288,7 +1397,9 @@ subport kf5-kded {
         }
         notes-append    "You can opt to let the KDE daemon, kded5, be started automatically at login. \
         To do this, use the following command (once): \
-         launchctl load -w ${startup_root}/Library/LaunchAgents/org.macports.kded5.plist"
+        launchctl load -w ${startup_root}/Library/LaunchAgents/org.macports.kded5.plist
+        Also remember to unload/reload this plist after upgrading ${subport}
+         "
     }
     test.cmd        echo
     test.target     no tests for this framework
@@ -1308,9 +1419,18 @@ subport kf5-kdesignerplugin {
                     qtwebkit
     kf5.depends_frameworks \
                     kconfig kconfigwidgets kcompletion kcoreaddons \
-                    kdewebkit kdoctools ki18n kiconthemes kio \
+                    kdoctools ki18n kiconthemes kio \
                     kitemviews kplotting ktextwidgets \
                     kwidgetsaddons kxmlgui sonnet
+    configure.args-append \
+                    -DCMAKE_DISABLE_FIND_PACKAGE_KF5WebKit=ON
+    variant webkit {
+        configure.args-replace \
+                    -DCMAKE_DISABLE_FIND_PACKAGE_KF5WebKit=ON \
+                    -DCMAKE_DISABLE_FIND_PACKAGE_KF5WebKit=OFF
+        kf5.depends_frameworks-append \
+                    kdewebkit
+    }
 #     test.cmd        echo
 #     test.target     no tests for this framework
 }
@@ -1327,6 +1447,9 @@ subport kf5-kdesu {
     kf5.depends_frameworks \
                     kcoreaddons ki18n kpty kservice
     configure.args  -DKDESU_USE_SUDO_DEFAULT=On
+    patchfiles-append \
+                    kdesu/patch-kdesu-543-buildfix.diff \
+                    kdesu/patch-kdesu-543-improvement.diff
 }
 
 subport kf5-kdewebkit {
@@ -1430,7 +1553,9 @@ subport kf5-kinit {
         }
         notes-append    "You can opt to let KDE quickstart utility, kdeinit5, be started automatically at login. \
         To do this, use the following command (once): \
-         launchctl load -w ${startup_root}/Library/LaunchAgents/org.macports.kdeinit5.plist"
+        launchctl load -w ${startup_root}/Library/LaunchAgents/org.macports.kdeinit5.plist
+        Also remember to unload/reload this plist after upgrading ${subport}
+        "
         post-activate {
             # allow for signing kdeinit5 on OS X to avoid warnings in the system.log
             codesign ${prefix}/bin/kdeinit5 -
@@ -1478,13 +1603,8 @@ subport kf5-kio {
                     kjobwidgets knotifications kservice ktextwidgets \
                     kwallet kwidgetsaddons kwindowsystem kxmlgui solid
     # submit upstream:
-    # https://phabricator.kde.org/D7237 / https://commits.kde.org/kio/088a0c67ccdc36ebad4bd9adbc42430a1c9d9c51
-    patchfiles-append \
-                    kio/patch-kio-nongui-kiod-and-agent.diff
     patchfiles-append \
                     kio/patch-kio-kioslave-silence-and-agent.diff
-#    versioned_patchfile_append \
-#                    kio patch-kioexec-agent.diff
     patchfiles-append \
                     kio/patch-kio-preserve-window-icon.diff \
                     kio/patch-kio-khelpcentre5.diff
@@ -1500,6 +1620,7 @@ subport kf5-kio {
     post-activate {
         # allow for signing the kioslave on OS X to avoid warnings in the system.log
         codesign ${prefix}/libexec/kde5/kf5/kioslave -
+        codesign ${prefix}/libexec/kde5/kf5/kiod5 -
     }
 }
 
@@ -1567,24 +1688,6 @@ subport kf5-kirigami-devel {
 }
 
 subport kf5-kirigami2 {
-    description     KDE’s *future* lightweight user interface framework for mobile and convergent applications.
-    long_description \
-                    Kirigami is KDE’s *future* lightweight user interface framework for mobile and convergent \
-                    applications. \
-                    This framework doesn't yet have a release version, please install ${subport}-devel instead.
-    conflicts-append \
-                    kf5-kirigami2-devel
-    set kf5.framework \
-                    kirigami2
-    version         0.0.0
-    variant examples description {install any examples provided} {}
-    pre-fetch {
-        ui_error "This framework doesn't yet have a release version, please install ${subport}-devel instead"
-        return -code error "Please use ${subport}-devel for now"
-    }
-}
-
-subport kf5-kirigami2-devel {
     description     KDE’s lightweight user interface framework for mobile and convergent applications.
     long_description \
                     Kirigami is KDE’s lightweight user interface framework for mobile and convergent \
@@ -1594,47 +1697,57 @@ subport kf5-kirigami2-devel {
                     user experience). It extends the touch-friendly Qt Quick Controls with larger \
                     application building blocks, following the design philosophy laid out in the \
                     Kirigami Human Interface Guidelines.
-    conflicts-append \
-                    kf5-kirigami2
-    # sic, kirigami2 lives in the same git repo as kirigami!
     set kf5.framework \
-                    kirigami
-    fetch.type      git
-#     # v2.0.0-28-ge51257a
-#     git.branch      e51257ac9304238982ee38ca6da9acd91dadab02
-    # v2.2.0-18-g88f7922
-    git.branch      88f79226ec77f8a5c30a22037566ffc0ab807382
-    version         5.35.0.2.2.0.18
+                    kirigami2
+    kf5::set_checkums
+    conflicts-append \
+                    kf5-kirigami2-devel
     variant examples description {install any examples provided} {
-        patchfiles-append \
-                    kirigami2/patch-kirig-add-app-icon.diff
+        depends_build-append \
+                    port:git
         configure.args-append \
                     -DBUILD_EXAMPLES=ON
     }
     pre-fetch {
         if {[vercmp [qt5.active_version] 5.7.0] < 0} {
-            ui_error "This framework needs Qt >= 5.7.0"
+            ui_error "This framework needs Qt >= 5.7.0 (not [qt5.active_version])"
             return -code error "Needs a more recent Qt version"
         }
     }
-    depends_build-append \
-                    port:git
     kf5.depends_qt5_components \
                     qtdeclarative qtsvg
     # this is a Tier1 framework with an optional dependency on a Tier3 framework. Since
     # we make that a non-optional dependency we include Kirigami in the Tier3 frameworks.
+    kf5.depends_build_frameworks \
+                    breeze-icons
     kf5.depends_frameworks \
                     plasma-framework
+    configure.args-append \
+                    -DBREEZEICONS_DIR=${prefix}/share/icons/breeze
     post-destroot {
         if {[variant_isset examples]} {
+            xinstall -m 755 -d ${destroot}${kf5.applications_dir}/examples
             ifplatform darwin {
-                file delete -force ${destroot}${kf5.applications_dir}/kirigami2gallery.app
+                xinstall -d -m 755 ${destroot}${prefix}/bin/examples
+                file rename ${destroot}${kf5.applications_dir}/kirigami2gallery.app ${destroot}${kf5.applications_dir}/examples
+                file rename ${destroot}${kf5.applications_dir}/applicationitemapp.app ${destroot}${kf5.applications_dir}/examples
             } else {
-                xinstall -m 755 -d ${destroot}${kf5.applications_dir}/examples
                 file rename ${destroot}${kf5.applications_dir}/kirigami2gallery ${destroot}${kf5.applications_dir}/examples/
+                file rename ${destroot}${kf5.applications_dir}/applicationitemapp ${destroot}${kf5.applications_dir}/examples/
             }
+            kf5.add_app_wrapper examples/kirigami2gallery5 examples/kirigami2gallery
+            kf5.add_app_wrapper examples/applicationitemapp5 examples/applicationitemapp
         }
     }
+}
+
+subport kf5-kirigami2-devel {
+    description     KDE’s lightweight user interface framework for mobile and convergent applications.
+    long_description ${description}
+    replaced_by     kf5-kirigami2
+    PortGroup       obsolete 1.0
+    conflicts-append \
+                    kf5-kirigami2
 }
 
 subport kf5-knewstuff {
@@ -1738,13 +1851,13 @@ subport kf5-plasma-framework {
                     kglobalaccel kguiaddons ki18n kiconthemes kio kservice \
                     kwindowsystem kxmlgui knotifications kpackage \
                     kparts kwidgetsaddons
+    # fix from future 5.43
+    patchfiles-append \
+                    plasma-framework/D10092.diff
     platform linux {
         kf5.depends_frameworks \
                     kwayland
     }
-    # submit this one upstream
-    patchfiles-append \
-                    plasma-framework/patch-plasmafw-autotests.diff
     post-patch {
         reinplace "s|/usr/share/inkscape|${prefix}/share/inkscape|g" "${worksrcpath}/src/tools/inkscape extensions/plasmarename.py"
         reinplace "s|/usr/bin/perl|${prefix}/bin/perl5|g" ${worksrcpath}/src/tools/currentColorFillFix.sh
@@ -1796,7 +1909,9 @@ subport kf5-kservice {
         notes-append    "An agent can be started to maintain KDE's desktop file system configuration cache, \
         so you don't have to run 'kbuildsycoca5' manually. \
         To start it run the following command: \
-         launchctl load -w ${startup_root}/Library/LaunchAgents/org.macports.kdecache5.plist"
+        launchctl load -w ${startup_root}/Library/LaunchAgents/org.macports.kdecache5.plist
+        Also remember to unload/reload this plist after upgrading ${subport}
+        "
     }
     # the autotests from this port  cleaned out a number of directories under /Applications for me.
     # Shouldn't happen anymore with Qt's QSP switched to XDG mode (+qspXDG variant), but since that's
@@ -1817,13 +1932,26 @@ subport kf5-ktexteditor {
     set kf5.framework \
                     ktexteditor
     kf5::set_checkums
+#     variant qtscript description {use KTextEditor with QtScript instead of QtQML (as long as that's possible)} {}
     depends_build-append \
                     path:bin/perl5:perl5
     depends_lib-append \
                     port:libgit2 \
                     port:editorconfig-core-c
     kf5.depends_qt5_components \
-                    qtscript qtxmlpatterns
+                    qtxmlpatterns
+
+#     if {[variant_isset qtscript]} {
+#         kf5.depends_qt5_components \
+#                     qtscript
+#         patchfiles-append \
+#                     ktexteditor/patch-revert-doc_view-scripting.diff \
+#                     ktexteditor/patch-back2qtscript.diff
+#     } else {
+        kf5.depends_qt5_components \
+                    qtdeclarative
+#     }
+
     kf5.depends_frameworks \
                     karchive kconfig kguiaddons \
                     ki18n kiconthemes kio kparts \
@@ -1856,11 +1984,6 @@ subport kf5-ktexteditor {
     # fix a confusing alert message
     patchfiles-append \
                     ktexteditor/patch-ktexteditor-mod-message.diff
-#     # contextmenu optimisation (in testing)
-#     patchfiles-append \
-#                     ktexteditor/patch-ktexteditor-contextmenu.diff
-    patchfiles-append \
-                    ktexteditor/patch-ktexteditor-no-accidental-zoom2.diff
 }
 
 subport kf5-ktextwidgets {
@@ -1875,10 +1998,6 @@ subport kf5-ktextwidgets {
                     kcompletion kconfig kconfigwidgets ki18n \
                     kiconthemes kservice sonnet kwidgetsaddons \
                     kwindowsystem
-#    # window icon pushed in 9789cf3ca091a6affd2253c7609db1da41d4a6ba
-#    # https://git.reviewboard.kde.org/r/129513/
-#    versioned_patchfile_append \
-#                    ktextwidgets patch-ktextwidgets-preserve-window-icon.diff
     patchfiles-append \
                     ktextwidgets/patch-ktextwidg-use-qsettings-iniformat.diff
 }
@@ -1911,7 +2030,7 @@ subport kf5-kwallet {
                 port:gpgme \
                 port:libgcrypt
         depends_run-append \
-                port:gpg-agent
+                port:gnupg2
         if {${os.major} >= 12} {
             depends_run-append \
                 port:pinentry-mac
@@ -1953,7 +2072,9 @@ subport kf5-kwallet {
             notes-append    "The KDE Wallet daemon, kwalletd5, has to be started, and not on-demand by KDE itself. \
             This works best when done manually from a terminal (or a .cshrc/.profile/.bashrc script). \
             To do it automatically at login, use the following command (once): \
-             launchctl load -w ${startup_root}/Library/LaunchAgents/org.macports.kwalletd5.plist"
+            launchctl load -w ${startup_root}/Library/LaunchAgents/org.macports.kwalletd5.plist
+            Also remember to unload/reload this plist after upgrading ${subport}
+            "
         }
      }
 }
@@ -1973,8 +2094,6 @@ subport kf5-kxmlgui {
                     ki18n kiconthemes kitemviews ktextwidgets \
                     kwidgetsaddons kwindowsystem
     patchfiles-append \
-                    kxmlgui/patch-kxmlgui-revert-4690808e65.diff \
-                    kxmlgui/patch-kxmlgui-revert-b5af0296cb.diff \
                     kxmlgui/patch-delete-without-remove-debug.diff
 }
 
@@ -2028,7 +2147,7 @@ subport kf5-frameworkintegration {
         }
     } else {
         depends_run-append \
-                port:kf5-plasma-integration
+                path:${qt_plugins_dir}/platformthemes/KDEPlasmaPlatformTheme.so:kf5-plasma-integration
     }
     set kf5.framework \
                     frameworkintegration
@@ -2036,6 +2155,8 @@ subport kf5-frameworkintegration {
     kf5.depends_frameworks \
                     kconfig kconfigwidgets ki18n kiconthemes \
                     knewstuff knotifications kpackage kwidgetsaddons
+    kf5.depends_run_frameworks \
+                    qqc2desktopstyle
     test.env-append \
                     KDE_SESSION_VERSION=5
     post-patch {
@@ -2067,9 +2188,8 @@ subport kf5-frameworkintegration-devel {
     set kf5.framework \
                     frameworkintegration
     fetch.type      git
-#     v5.35.0-3-gc0b2e4f
-    git.branch      c0b2e4f644f89c58b0da63dbb99f0d15d5164ecb
-    version         5.35.0.3
+    git.branch      0d5299eb760bccc318519e3d338de48537654621
+    version         5.42.0.2
     kf5.depends_frameworks \
                     kconfig kconfigwidgets kiconthemes knewstuff \
                     knotifications kpackage kwidgetsaddons
@@ -2089,7 +2209,12 @@ if {${fetch.type} eq "git"} {
     git.url         git://anongit.kde.org/${kf5.framework}
     distname        ${kf5.framework}-5.git
 } else {
-    master_sites    http://download.kde.org/stable/${kf5.folder}
+    if {[vercmp ${kf5.version} 5.35.0] <= 0} {
+        set dbranch "Attic"
+    } else {
+        set dbranch "stable"
+    }
+    master_sites    http://download.kde.org/${dbranch}/${kf5.folder}
     distname        ${kf5.framework}-${version}
 }
 
@@ -2114,61 +2239,6 @@ subport kf5-kdelibs4support {
     kf5.set_project \
                     kdelibs4support
     kf5::set_checkums
-#     depends_build-append \
-#                     ${kf5::oxygen-icons_dep} \
-#                     path:bin/perl5:perl5 \
-#                     port:p${perl5.default_branch}-uri \
-#                     lib:libssl:openssl \
-#                     port:docbook-xml
-#     kf5.depends_qt5_components \
-#                     qtsvg
-#     kf5.depends_frameworks \
-#                     kcompletion kconfig kconfigwidgets \
-#                     kcrash kdbusaddons kded kdesignerplugin \
-#                     kdoctools kglobalaccel kguiaddons ki18n \
-#                     kiconthemes kio knotifications kparts \
-#                     kservice ktextwidgets kunitconversion \
-#                     kwidgetsaddons kwindowsystem kxmlgui
-#     platform darwin {
-#         # pretend KDE_FULL_SESSION is set in order to get full support for theming settings
-#         patchfiles-append \
-#                     kdelibs4support/patch-kdelibs4supp-simulate-full_session.diff \
-#                     kdelibs4support/patch-kdelibs4supp-add-icon.diff
-#         post-patch {
-#             # create the destination directory that will host icon file links:
-#             xinstall -m 755 -d ${build.dir}/src/kdebugdialog/icons
-#             # call kf5.link_icons to populate that directory with icon links with appropriate names:
-#             # ${prefix}/share/icons/oxygen/128x128/actions/tools-report-bug.png will become 128-tools-report-bug.png etc.
-#             kf5.link_icons ${prefix}/share/icons/oxygen actions tools-report-bug.png ${build.dir}/src/kdebugdialog/icons
-#         }
-#     }
-#     # submit upstream
-#     patchfiles-append \
-#                     kdelibs4support/patch-kdelibs4supp-qosmac=osx.diff \
-#                     kdelibs4support/patch-kdelibs4supp-correct-menuroles-kaction.diff \
-#                     kdelibs4support/patch-kdelibs4supp-correct-fileshareset-install.diff
-#     # https://git.reviewboard.kde.org/r/126308
-# #     patchfiles-append \
-# #                     patch-kdelibs4supp-kpbutton-noshowicon.diff
-#     # https://git.reviewboard.kde.org/r/126309/
-#     patchfiles-append \
-#                     kdelibs4support/patch-kdelibs4supp-backtrace-demangle.diff
-#     patchfiles-append \
-#                     kdelibs4support/patch-kdelibs4supp-add-bundle-path.diff \
-#                     kdelibs4support/patch-kdelibs4supp-preserve-app-icon.diff
-#     post-patch {
-#         reinplace "s|/usr/local/|${prefix}/|g" ${worksrcpath}/src/kssl/kopenssl.cpp
-#         reinplace "s|/usr/sbin|${prefix}/sbin|g" ${worksrcpath}/src/kio/kfileshare.cpp
-#         reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/src/kdecore/kmimetyperepository.cpp
-#         reinplace "s|/usr/local|${prefix}|g" ${worksrcpath}/src/kdecore/kstandarddirs.cpp
-#     }
-#     post-destroot {
-#         reinplace "s|/usr/bin/perl|${prefix}/bin/perl5|g" ${destroot}${kf5.libexec_dir}/kf5/fileshareset
-#         if {[variant_isset kde4compat] && [file exists ${destroot}${prefix}/share/doc/HTML/en/kcontrol/kcm_ssl]} {
-#             file rename ${destroot}${prefix}/share/doc/HTML/en/kcontrol/kcm_ssl \
-#                 ${destroot}${prefix}/share/doc/HTML/en/kcontrol/kcm_ssl5
-#         }
-#     }
 }
 
 subport kf5-kdelibs4support-devel {
@@ -2184,11 +2254,9 @@ subport kf5-kdelibs4support-devel {
     # change the type of framework to "portingAid"
     kf5.is_portingAid
     fetch.type      git
-#     v5.2.0-277-gc2fbab9
-#     git.branch      c2fbab94b030e16d925c0f09c0bb6dc0d888595b
-#     v5.2.0-291-g265379e
-    git.branch      265379e52b9243886dd082bf5e45d05b2e6360b2
-    version         5.35.0.5.2.0.291
+    # v5.2.0-350-ga874b6a6
+    git.branch      a874b6a67643e9db22eb586ff01646968d149e41
+    version         5.42.0.5.2.0.350
     # call the function that will take care of resetting the rest
     kf5.set_project \
                     kdelibs4support
@@ -2206,11 +2274,12 @@ if {${subport} eq "kf5-kdelibs4support" || ${subport} eq "kf5-kdelibs4support-de
                     qtsvg
     kf5.depends_frameworks \
                     kcompletion kconfig kconfigwidgets \
-                    kcrash kdbusaddons kded kdesignerplugin \
+                    kcrash kdbusaddons kded \
                     kdoctools kglobalaccel kguiaddons ki18n \
                     kiconthemes kio knotifications kparts \
                     kservice ktextwidgets kunitconversion \
                     kwidgetsaddons kwindowsystem kxmlgui
+    # optional runtime dependency: kdesignerplugin
     kf5.depends_run_frameworks \
                     kemoticons
     platform darwin {
@@ -2336,29 +2405,6 @@ subport kf5-kross {
                     kross/patch-kross-nongui-execs.diff
 }
 
-# post-destroot {
-#     if {[variant_isset qspXDG]} {
-#         ui_msg "--->  Checking ${subport} for the QspXDG activator ..."
-#         if {[info exists kf5.framework]} {
-#             upvar #0 kf5.${kf5.framework}_lib lib
-#         } elseif {[info exists kf5.portingAid]} {
-#             upvar #0 kf5.${kf5.portingAid}_lib lib
-#         } else {
-#             upvar #0 kf5.${kf5.project}_lib lib
-#         }
-#         if {[info exists lib]} {
-#             set libopt "-qsplib ${lib}"
-#         } else {
-#             set libopt ""
-#         }
-#         if {[catch {system "${filespath}/../check-qspxdg.sh ${libopt} ${subport} 2>&1"} result context]} {
-#             ui_msg "QspXDG activator check failed: ${result}, ${context}"
-#         } else {
-#             ui_debug "QspXDG activator check: ${result}"
-#         }
-#     }
-# }
-
 ### === Meta Ports ===
 
 if {${subport} eq ${name}} {
@@ -2453,17 +2499,18 @@ subport kf5-tier3-frameworks {
                     ${description}, the frameworks that depend on Tier-1 and/or Tier-2 and/or Tier-3 frameworks
     homepage        http://projects.kde.org/projects/ \
                     http://api.kde.org/frameworks-api/frameworks5-apidocs/\#fw-tier3
+    # build dependencies are declared in the order in which they have to be built
     kf5.depends_build_frameworks \
-                    baloo kactivities kbookmarks kcmutils kconfigwidgets \
-                    kdeclarative kded kdesignerplugin kdesu kdewebkit \
-                    kemoticons kglobalaccel kiconthemes kinit kio \
-                    knewstuff knotifyconfig kparts kpeople plasma-framework \
-                    kservice ktexteditor ktextwidgets kwallet kxmlgui kxmlrpcclient \
-                    krunner
-    # TODO: add kirigami once it's officially a framework with a release version.
-    # kf5-baloo kf5-kactivities kf5-kbookmarks kf5-kcmutils kf5-kconfigwidgets kf5-kdeclarative kf5-kded kf5-kdesignerplugin kf5-kdesu kf5-kdewebkit kf5-kemoticons kf5-kglobalaccel kf5-kiconthemes kf5-kinit kf5-kio kf5-knewstuff kf5-knotifyconfig kf5-kparts kf5-kpeople kf5-plasma-framework kf5-kservice kf5-ktexteditor kf5-ktextwidgets kf5-kwallet kf5-kxmlgui kf5-kxmlrpcclient kf5-krunner
+                    kconfigwidgets kiconthemes kservice kglobalaccel \
+                    ktextwidgets kxmlgui kbookmarks kwallet kio \
+                    baloo kactivities kactivities-stats kdeclarative \
+                    kcmutils kinit kded kparts kdewebkit \
+                    kdesignerplugin kdesu kemoticons knewstuff \
+                    knotifyconfig kpeople plasma-framework kirigami2 \
+                    ktexteditor kxmlrpcclient krunner
+    # kf5-baloo kf5-kactivities kf5-kactivities-stats kf5-kbookmarks kf5-kcmutils kf5-kconfigwidgets kf5-kdeclarative kf5-kded kf5-kdesignerplugin kf5-kdesu kf5-kdewebkit kf5-kemoticons kf5-kglobalaccel kf5-kiconthemes kf5-kinit kf5-kio kf5-kirigami2 kf5-knewstuff kf5-knotifyconfig kf5-kparts kf5-kpeople kf5-plasma-framework kf5-kservice kf5-ktexteditor kf5-ktextwidgets kf5-kwallet kf5-kxmlgui kf5-kxmlrpcclient kf5-krunner
     # in build order:
-    # kf5-kconfigwidgets kf5-kiconthemes kf5-kservice kf5-kglobalaccel kf5-ktextwidgets kf5-kxmlgui kf5-kbookmarks kf5-kwallet kf5-kio kf5-baloo kf5-kactivities kf5-kdeclarative kf5-kcmutils kf5-kinit kf5-kded kf5-kparts kf5-kdewebkit kf5-kdesignerplugin kf5-kdesu kf5-kemoticons kf5-knewstuff kf5-knotifyconfig kf5-kpeople kf5-plasma-framework kf5-ktexteditor kf5-kxmlrpcclient kf5-krunner
+    # kf5-kconfigwidgets kf5-kiconthemes kf5-kservice kf5-kglobalaccel kf5-ktextwidgets kf5-kxmlgui kf5-kbookmarks kf5-kwallet kf5-kio kf5-baloo kf5-kactivities kf5-kactivities-stats kf5-kdeclarative kf5-kcmutils kf5-kinit kf5-kded kf5-kparts kf5-kdewebkit kf5-kdesignerplugin kf5-kdesu kf5-kemoticons kf5-knewstuff kf5-knotifyconfig kf5-kpeople kf5-plasma-framework kf5-kirigami2 kf5-ktexteditor kf5-kxmlrpcclient kf5-krunner
     installs_libs   no
     supported_archs noarch
     distfiles
@@ -2506,7 +2553,7 @@ subport kf5-portingaid-frameworks {
     }
 }
 
-# don't allow /RJVB to forget resetting the revision when upgrading versions
+# maintainer overwatch: don't forget to reset the revision when upgrading versions
 if {(${kf5.latest_version} ne ${kf5.version}) && (${revision} ne 0)} {
     ui_warn "${subport} has non-zero revision ${revision}"
     pre-install {
@@ -2514,6 +2561,8 @@ if {(${kf5.latest_version} ne ${kf5.version}) && (${revision} ne 0)} {
         return -code error "reset ${subport} revision before installing!"
     }
 }
+
+long_description-append "\n(${subport} is a [kf5::tier] framework.)"
 
 livecheck.type      regex
 livecheck.version   ${kf5.branch}

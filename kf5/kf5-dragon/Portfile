@@ -8,9 +8,12 @@ set kf5.project     dragon
 set kf5.virtualPath applications
 set kf5.category    multimedia
 PortGroup           kf5 1.1
-kf5.use_latest      applications
+# freezing the port for now
+set kf5.latest_release \
+                    17.08.3
+kf5.use_latest      applications    ;# shunted to 17.08.3
 
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         gmail.com:rjvbertin openmaintainer
 
 installs_libs       no
 
@@ -22,8 +25,8 @@ long_description    Dragon Player is a multimedia player where the focus is \
                     instead empower you to simply play multimedia files.
 homepage            https://www.kde.org/applications/multimedia/dragonplayer/
 
-checksums           rmd160  995fb384ad4228380d795a8a52363823e48feb71 \
-                    sha256  a049807d1356a9174eaf903a9971688ac62dfffd4d087397a6104976a5d73e41
+checksums           rmd160  8cb34b3e1184a36bdae24c73438268e079e3750f \
+                    sha256  f8a9f7175c0ef2ca8d85b6d4a7d3b3f5594e607d0886b2b8d6961e0a9ee3bf3b
 
 kf5.depends_build_frameworks \
                     kdoctools

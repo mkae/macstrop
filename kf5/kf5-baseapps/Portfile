@@ -10,9 +10,10 @@ set kf5.virtualPath applications
 set kf5.category    utilities
 PortGroup           kf5 1.1
 
-# kf5.use_latest      applications
+# 17.12.1
+kf5.use_latest      applications
 
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         gmail.com:rjvbertin openmaintainer
 
 kf5.allow_apidocs_generation no
 
@@ -31,8 +32,8 @@ subport kf5-kdialog {
                     The syntax is very much inspired by the Linux "dialog" command \
                     (which shows text mode dialogs).
     homepage        http://techbase.kde.org/Development/Tutorials/Shell_Scripting_with_KDE_Dialogs
-    checksums       rmd160  b89c7e54090be163ddd9e88ced5ad898deefabc6 \
-                    sha256  5c15be232239e47d7150066a68a78cf39fdcbfe0e86ab2698e3a920da5f28ea0
+    checksums       rmd160  26862150c1794e823fd89640fd8c44dd5447e2b3 \
+                    sha256  9477d92da5d9fc26e33b032f49ba66047d512720277fdaa355aafbbfc683bd1c
     patchfiles-append \
                     kdialog/patch-preserve-window-icon.diff \
                     kdialog/patch-nongui-executables.diff
@@ -53,8 +54,8 @@ subport kf5-kfind {
                     The Find Files tool is a useful method of searching for specific files \
                     on your computer, or for searching for files that match a pattern, \
                     or that contain a certain piece of text in their contents.
-    checksums       rmd160  f596457cd3f79855e895fba62cf66124e0ab60c4 \
-                    sha256  6a17a6a6c94eadec4ef4d427d693af1a3a962266569d2e67723ef3ef48b80434
+    checksums       rmd160  38afd363ac70c6b8a30d8e94aa00623bf3c95c0e \
+                    sha256  b3bb4749609125e55a0f926d57966814840c94bbf0361170b3937a832ee1277d
     kf5.depends_frameworks \
                     karchive kdelibs4support kio
     platform darwin {
@@ -76,8 +77,8 @@ subport kf5-keditbookmarks {
     description     KDE Bookmark Organiser and Editor
     long_description \
                     ${description}
-    checksums       rmd160  5e2b3cf08f9c27c9909eb8b07b5c98b1e76af0f2 \
-                    sha256  0c674364cf6d4db6f70c05e4c7f51718cd18f3b5ad0798c8d7c905646ad9498b
+    checksums       rmd160  7a86a5e79617717d5c34624a0f4cc4d0aafa55bf \
+                    sha256  d64a86cd09cd41ca7bf1912438bb64dc8caefcce07290789668611e10c5d83d6
     kf5.depends_frameworks \
                     kbookmarks kcoreaddons ki18n \
                     kiconthemes kio kparts kwindowsystem
@@ -110,8 +111,8 @@ subport kf5-konqueror {
                     editor, a word document editor, an SVN client and more without ever needing to \
                     open a separate application.
     homepage        http://konqueror.org/
-    checksums       rmd160  85397b1910b9cc389b1705bd8abe30a0cf7535a1 \
-                    sha256  9835f132cb6adc52d0e4c273aaab45d21e16bba39f3281122f877f1e66766638
+    checksums       rmd160  9fbdcfd23b0356f0fbfb962b9f3d3893c9058511 \
+                    sha256  5cda2547508e404d5d7645d989c18d61c8c97d16dd0b9dbb4ef588f6fd77da59
 
     kf5.depends_qt5_components \
                     qtdeclarative qtlocation qtscript \
@@ -166,10 +167,10 @@ subport kf5-konqueror {
             # a more exhaustive check would verify if port:kde4-baseapps is either
             # not installed or installed without the +konqueror variant. This
             # boils down to the same thing:
-            if {![file exists ${prefix}/share/config.kcfg/konqueror.kcfg]} {
+            if {![file exists ${prefix}/lib/libkonquerorprivate.4.dylib]} {
                 conflicts-delete kde4-baseapps
             }
-	   }
+        }
         post-destroot {
             kf5.add_app_wrapper konqueror5 konqueror
         }

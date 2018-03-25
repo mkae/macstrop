@@ -2,40 +2,32 @@
 
 PortSystem          1.0
 PortGroup           github 1.0
+PortGroup           qt5 1.0
+PortGroup           cmake 1.1
 
 name                zeal
 
-if {${subport} eq "${name}"} {
-    PortGroup       qmake5 1.0
-} else {
-    PortGroup       qt5 1.0
-    PortGroup       cmake 1.1
-}
-
 subport zeal-devel  {}
 if {${subport} eq "${name}-devel"} {
-    github.setup    zealdocs zeal 57c9edd20c555823af0df473576ad180e4bde14c
+    github.setup    zealdocs zeal 44e0289c35dfff3f4eb5032a7b83cbaa46ebfac4
     fetch.type      git
-    version         0.3.1.102
+    version         0.5.0.32
     worksrcdir      ${name}-git
     distname        ${name}-git
-    set PPREFIX     devel/
+    set PPREFIX     ./
     depends_lib-append \
                     port:sqlite3
     depends_build-append \
                     path:share/ECM/cmake/ECMConfig.cmake:kde-extra-cmake-modules
     cmake.save_configure_cmd
-    platform linux {
-        cmake.install_rpath-prepend \
-                    ${qt_libs_dir}
-    }
     cmake.save_configure_cmd
 } else {
-    github.setup    zealdocs zeal v0.3.1
-    checksums       rmd160  7ba76f246d5310913833c8c6782853cde434b85a \
-                    sha256  24dff3140ef63ccbc1e13d55369dd67007cb09d213d0350e02dff1ad37920aeb
+    github.setup    zealdocs zeal v0.5.0
+    version         0.5.0
+    checksums       rmd160  478bef5f5be5c6f14ed57e2936eb60ec38c9b3e3 \
+                    sha256  b1f3461634c5a93d175ed35f096cac778a52ad71bacef02cb1c9691fa6f2b0ce
     set PPREFIX     ./
-    livecheck.regex [strsed [join ${livecheck.regex} ""] "s|archive/|archive/v|"]
+    livecheck.regex [strsed [join ${livecheck.regex} ""] "s|archive\/(|archive/(v|"]
 }
 
 categories          devel
@@ -48,38 +40,45 @@ license             GPL-3
 
 homepage            https://zealdocs.org
 
+installs_libs       no
+
 depends_lib-append  port:libarchive
 
 patch.pre_args      -Np1
 
-patchfiles-append   ${PPREFIX}patch-macports-install.diff
+patchfiles-append   ${PPREFIX}patch-macports-install.diff \
+                    ${PPREFIX}patch-macports-update-checking.diff \
+                    patch-no-carbon.diff
 
-variant webkit conflicts webengine description {use the legacy Qt WebKit interface} {
+# support for QtWebEngine was removed upstream - for now?
+# variant webkit conflicts webengine description {use the legacy Qt WebKit interface}
+variant webkit description {use the legacy Qt WebKit interface} {
     qt5.depends_component \
                     qtwebkit
 }
 
-if {${subport} eq "${name}"} {
-    variant webengine conflicts webkit description {use the Qt WebEngine interface. Experimental.} {
-        qt5.depends_component \
-                    qtwebengine
-        configure.args-append \
-                    -config zeal_qtwebengine
-    }
-    patchfiles-append \
-                    ${PPREFIX}patch-always-use-pkgconfig.diff
-    default configure.dir       {${workpath}/build}
-    configure.pre_args-append   ../${worksrcdir}
-    configure.args-append       -recursive
-    default build.dir           {${workpath}/build}
-}
+# if {${subport} eq "${name}"} {
+#     variant webengine conflicts webkit description {use the Qt WebEngine interface. Experimental.} {
+#         qt5.depends_component \
+#                     qtwebengine
+#         configure.args-append \
+#                     -config zeal_qtwebengine
+#     }
+#     patchfiles-append \
+#                     ${PPREFIX}patch-always-use-pkgconfig.diff
+#     default configure.dir       {${workpath}/build}
+#     configure.pre_args-append   ../${worksrcdir}
+#     configure.args-append       -recursive
+#     default build.dir           {${workpath}/build}
+# }
 
 if {![variant_exists webengine] || ![variant_isset webengine]} {
     default_variants    +webkit
 }
 
 if {![variant_isset webkit] && ![variant_isset webengine]} {
-    ui_error "You need to select either the +webkit or the +webengine variant"
+#     ui_error "You need to select either the +webkit or the +webengine variant"
+    ui_error "You must select the +webkit variant (support for QtWebEngine may return)"
     return -code error "Unsupported configuration"
 }
 
@@ -92,4 +91,8 @@ platform darwin {
             qt5.add_app_wrapper zeal Zeal
         }
     }
+}
+platform linux {
+    cmake.install_rpath-prepend \
+                    ${qt_libs_dir}
 }

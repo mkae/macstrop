@@ -1,0 +1,10 @@
+--- qt-everywhere-opensource-src-5.9.3/qtwebengine/qtwebengine.pro.orig	2017-12-21 14:04:55.247840193 +0100
++++ qt-everywhere-opensource-src-5.9.3/qtwebengine/qtwebengine.pro	2017-12-21 15:11:14.077528986 +0100
+@@ -23,7 +23,6 @@
+     tools/scripts/* \
+     config.tests/khr/* \
+     config.tests/libcap/* \
+-    config.tests/libvpx/* \
+     config.tests/snappy/* \
+     config.tests/re2/* \
+     mkspecs/features/*

@@ -1,0 +1,37 @@
+diff --git a/src/gui/Main.cpp b/src/gui/Main.cpp
+index b41abc2bc7fe81468d4c96de2fd28c9650c690a6..f6cbb70095f179ce798a43d2a1a5dc598bb7fd65 100644
+--- a/src/gui/Main.cpp
++++ b/src/gui/Main.cpp
+@@ -43,7 +43,10 @@
+ #include <QFile>
+ #include <QDir>
+ #ifdef Q_OS_MACOS
++	#include <QMap>
+ 	#include <QProcess>
++	#include <syslog.h>
++	#include <stdarg.h>
+ #endif
+ 
+ #include <csignal>
+@@ -485,6 +488,21 @@ static void messageHandler(QtMsgType type, const QMessageLogContext &context, co
+ 		fflush(stderr);
+ #endif
+ 	}
++#ifdef Q_OS_MACOS
++	else
++	{
++		// send a copy of terminal output to the syslog.
++		static const QMap<QtMsgType,int> type2Level = {
++			{QtDebugMsg, LOG_DEBUG},
++			{QtWarningMsg, LOG_WARNING},
++			{QtCriticalMsg, LOG_CRIT},
++			{QtFatalMsg, LOG_CRIT},
++			{QtInfoMsg, LOG_INFO}
++		};
++		syslog(LOG_NDELAY|LOG_PID|type2Level[type], "%s",
++			   qFormatLogMessage(type, context, message).toLocal8Bit().constData());
++	}
++#endif
+ }
+ 
+ int main(int argc, char *argv[])

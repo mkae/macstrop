@@ -1,0 +1,63 @@
+diff --git src/mainwindow.cpp src/mainwindow.cpp
+index 5697107f..342a9ba4 100644
+--- src/mainwindow.cpp
++++ src/mainwindow.cpp
+@@ -211,8 +211,8 @@ public:
+ 
+     void gnupgLogViewer()
+     {
+-        if (!QProcess::startDetached(QStringLiteral("kwatchgnupg")))
+-            KMessageBox::error(q, i18n("Could not start the GnuPG Log Viewer (kwatchgnupg). "
++        if (!QProcess::startDetached(QStringLiteral("kwatchgnupg5")))
++            KMessageBox::error(q, i18n("Could not start the GnuPG Log Viewer (kwatchgnupg5). "
+                                        "Please check your installation."),
+                                i18n("Error Starting KWatchGnuPG"));
+     }
+@@ -377,7 +377,7 @@ void MainWindow::Private::setupActions()
+ #ifndef Q_OS_WIN
+         {
+             "tools_start_kwatchgnupg", i18n("GnuPG Log Viewer"), QString(),
+-            "kwatchgnupg", q, SLOT(gnupgLogViewer()), QString(), false, true
++            "kwatchgnupg5", q, SLOT(gnupgLogViewer()), QString(), false, true
+         },
+ #endif
+ #ifdef Q_OS_WIN
+diff --git src/data/org.kde.kleopatra.desktop src/data/org.kde.kleopatra.desktop
+index 37807aa9..3ef391bc 100644
+--- src/data/org.kde.kleopatra.desktop
++++ src/data/org.kde.kleopatra.desktop
+@@ -1,7 +1,7 @@
+ [Desktop Entry]
+ Type=Application
+ Categories=Qt;KDE;Utility;
+-Exec=kleopatra
++Exec=kleopatra5
+ Icon=kleopatra
+ Name=Kleopatra
+ Name[af]=Kleopatra
+diff --git src/kwatchgnupg/CMakeLists.txt src/kwatchgnupg/CMakeLists.txt
+index ac8cf9cc..8cc53d32 100644
+--- src/kwatchgnupg/CMakeLists.txt
++++ src/kwatchgnupg/CMakeLists.txt
+@@ -22,10 +22,11 @@ if(WIN32)
+   set(kwatchgnupg_SRCS ${kwatchgnupg_SRCS} ../utils/gnupg-registry.c)
+ endif()
+ 
+-add_executable(kwatchgnupg ${kwatchgnupg_SRCS})
++add_executable(kwatchgnupg5 ${kwatchgnupg_SRCS})
++ecm_mark_nongui_executable(kwatchgnupg5)
+ 
+ 
+-target_link_libraries(kwatchgnupg
++target_link_libraries(kwatchgnupg5
+   KF5::DBusAddons  
+   KF5::XmlGui
+   KF5::Notifications
+@@ -34,6 +35,6 @@ target_link_libraries(kwatchgnupg
+   KF5::Libkleo
+ )
+ 
+-install(TARGETS kwatchgnupg ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
++install(TARGETS kwatchgnupg5 ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
+ 
+ install(FILES images/kwatchgnupg.png images/kwatchgnupg2.png DESTINATION ${KDE_INSTALL_DATADIR}/kwatchgnupg/pics)

@@ -6,7 +6,7 @@ PortSystem          1.0
 PortGroup           qmake5 1.0
 
 name                kchmviewer
-version             7.7
+version             7.7 ; revision 1
 
 categories          devel
 description         A CHM (Winhelp) files viewer written for Qt.
@@ -15,7 +15,7 @@ long_description    kchmviewer is a reader for CHM (Winhelp) and EPUB \
                     The main point of kchmviewer is compatibility with \
                     non-English chm files, including most international charsets.
 
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         gmail.com:rjvbertin openmaintainer
 platforms           darwin linux
 license             GPL-3
 
@@ -33,6 +33,7 @@ depends_lib-append  port:libzip \
                     port:chmlib
 
 # kchmviewer is transitioning to QtWebEngine, but that adaptation is not yet functional.
+# (and WebKit is a much more appropriate choice anyway.)
 qt5.depends_component \
                     qtwebkit
 
@@ -61,8 +62,18 @@ post-patch {
 configure.cppflags-append   -I${prefix}/lib/libzip/include
 default configure.dir       {${workpath}/build}
 configure.pre_args-append   ../${worksrcdir}/${name}.pro
-configure.args-append       -nocache -recursive
+configure.args-append       -recursive
 default build.dir           {${workpath}/build}
+
+post-extract {
+    # the mainstream qmake5 PG assumes qt5.top_level exists but doesn't check.
+    # it'll fail for ports like us intending to do an out-of-tree build.
+    # Create the directory now (it's needed in the pre-configure).
+    xinstall -m 755 -d ${qt5.top_level}
+}
+
+# the mainstream qmake5 PG also doesn't respect configure.ldflags
+default qt5.ldflags         {${configure.ldflags}}
 
 platform darwin {
     destroot {

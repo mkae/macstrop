@@ -7,16 +7,17 @@ set kf5.project     kdebugsettings
 set kf5.virtualPath applications
 set kf5.category    utilities
 PortGroup           kf5 1.1
-# kf5.use_latest      applications
+# 17.12.1
+kf5.use_latest      applications
 
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         gmail.com:rjvbertin openmaintainer
 
 installs_libs       no
 
 description         KF5 debugging output control
 long_description    utility to control the debug output level of KF5 and Qt5 applications
-checksums           rmd160  42a6dd5c41ceac16308a1d579a41541232116d5c \
-                    sha256  b017edfa8e0591f2509c5c79ed32f5cc3c3a124e759561ad0ad542650cfc05b0
+checksums           rmd160  36c116ed68bfb8c38ca9829d186c5340b6275df1 \
+                    sha256  109fded0b4f7e138bd664c3d1e23da773a69fbdb13e886504a73d753a5ad8829
 
 depends_build-append \
                     ${kf5::oxygen-icons_dep}

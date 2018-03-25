@@ -1,0 +1,86 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+# Copyright (c) 2015, 2016 R.J.V. Bertin
+
+PortSystem          1.0
+PortGroup           compiler_blacklist_versions 1.0
+
+set kf5.project     [string map [list "kf5-" ""] ${subport}]
+set kf5.virtualPath applications
+set kf5.category    office
+PortGroup           kf5 1.1
+# freezing the port for now
+set kf5.latest_release \
+                    17.08.3
+kf5.use_latest      applications    ;# shunted to 17.08.3
+
+maintainers         gmail.com:rjvbertin openmaintainer
+homepage            https://www.kde.org/applications/utilities/kleopatra/
+
+kf5.allow_apidocs_generation no
+
+subport kf5-libkleo {
+    description         KF5 Kleopatra library
+    long_description    ${description}.
+    checksums           rmd160  631349fef282d2acd62b03b835d035cbe1618a07 \
+                        sha256  67f90292be624073469d50374f7c2f71b300c787938a829098cfb683033bcedb
+
+    depends_lib-append  port:boost \
+                        port:gpgme \
+                        port:qgpgme
+    kf5.depends_frameworks \
+                        kcodecs kcompletion kconfig kcoreaddons \
+                        ki18n kitemmodels kwidgetsaddons kwindowsystem
+#     depends_lib-append  port:kf5-pimtextedit
+}
+
+subport kf5-kleopatra {
+    description         KF5 Certificate Manager and Unified Crypto GUI
+    long_description    KF5 Kleopatra is a certificate manager and a universal crypto GUI. \
+                        It supports managing X.509 and OpenPGP certificates in the GpgSM \
+                        keybox and retrieving certificates from LDAP servers.
+    checksums           rmd160  8a277764bb15946fcc7d3d558530ca1dda42cb9f \
+                        sha256  a8bb8bc8d6b6352f2d312f79ee2846217ffa699bff419673ebf70cdc1dbcf46d
+
+    depends_lib-append  port:libassuan \
+                        port:boost \
+                        port:gpgme \
+                        port:qgpgme
+    kf5.depends_frameworks \
+                        kcmutils kcodecs kconfig kconfigwidgets \
+                        kcoreaddons kdbusaddons kdoctools ki18n \
+                        kiconthemes kitemmodels knotifications \
+                        ktextwidgets kwidgetsaddons kwindowsystem kxmlgui
+    depends_lib-append  port:kf5-libkleo \
+                        port:kf5-libkmime
+
+    patchfiles-append   patch-featuresummary.diff \
+                        patch-appnames.diff
+
+    platform darwin {
+        compiler.blacklist *gcc* {clang < 602} macports-clang-3.3 macports-clang-3.4 macports-clang-3.5
+        foreach clv {3.6 3.7 3.8 3.9 4.0} {
+            if {[file exists ${prefix}/bin/clang-mp-${clv}]} {
+                compiler.whitelist-prepend macports-clang-${clv}
+            }
+            compiler.fallback-prepend macports-clang-${clv}
+        }
+        kf5.kde4compat -port "kdepim4 kdepim4-devel" {
+            # rename 2 simple libraries also installed by port:kdepim4
+            # It might be better to apply this patch unconditionally.
+            patchfiles-append \
+                        patch-kde4compat.diff
+            post-destroot {
+                file delete -force ${destroot}${prefix}/share/icons/hicolor
+                file delete -force ${destroot}${prefix}/share/doc/HTML
+            }
+        }
+    }
+
+    post-destroot {
+        kf5.add_app_wrapper kleopatra5 kleopatra
+    }
+}
+
+livecheck.type      regex
+livecheck.url       http://download.kde.org/stable/applications/
+livecheck.regex     (\\d+(\\.\\d+)+)

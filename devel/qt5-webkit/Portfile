@@ -1,0 +1,497 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           qt5 1.0
+
+# the name of the main port:
+name                qt5-webkit
+# the version provided by the main port:
+set mainPortVersion 5.211.92
+
+# a convenience procedure to register conflicts among the different Qt5 ports:
+# for instance: [qt5_port_conflicts {qtbase x11}]
+# adapted from port:qt5-kde
+proc qt5_port_conflicts {components} {
+    global available_qt5_versions available_qt_versions name
+    set cnfls {}
+    if {![info exists available_qt5_versions]} {
+        ui_debug "set available_qt5_versions [array get available_qt_versions]"
+        set available_qt5_versions [array get available_qt_versions]
+    }
+    foreach suffix {"" "-devel"} {
+        foreach comp ${components} {
+            foreach {v info} ${available_qt5_versions} {
+                if {"${v}-${comp}" ne "${name}"} {
+                    if {${comp} ne "" && ${comp} ne "qtbase"} {
+                        set cnfls [lappend cnfls ${v}-${comp}]
+                        set cnfls [lappend cnfls ${v}-kde${suffix}-${comp}]
+                    } else {
+                        set cnfls [lappend cnfls ${v}-qtbase]
+                        set cnfls [lappend cnfls ${v}-kde${suffix}]
+                    }
+                }
+            }
+        }
+    }
+    return ${cnfls}
+}
+
+patch.pre_args          -Np1
+
+# Provide the community version as an install variant
+set community_version   5.9.1
+variant community description "Installs the deprecated community release version ${community_version}" {}
+
+if {![variant_exists community] || ![variant_isset community]} {
+# !variant_isset community - rebooted QtWebKit
+
+PortGroup           cmake 1.1
+PortGroup           github 1.0
+
+set module          qtwebkit
+set targetversion   5.212.0
+set versiontag      ${targetversion}-alpha2
+github.setup        annulen webkit ${module}-${versiontag}
+github.tarball_from releases
+name                qt5-webkit
+# provide the patchlevel through the port revision; this would be perfectly
+# appropriate if we provided each upstream commit through a new revision
+# (so the only thing less orthodox is that we're lumping commits)
+epoch               2
+
+categories          devel
+description         QtWebKit Reloaded
+long_description    This port provides QtWebKit upgraded to the modern WebKit code base.
+homepage            https://github.com/annulen/webkit/wiki
+universal_variant   no
+
+maintainers         gmail.com:rjvbertin openmaintainer
+platforms           darwin linux
+license             LGPL-2
+
+# Share the distfiles dir with port:qt5
+dist_subdir         qt5
+
+# subport ${name}-devel {
+#     description-append This port follows the development branch.
+#     long_description-append This port follows the development branch.
+# }
+
+if {${subport} eq "${name}"} {
+    conflicts-append \
+                    ${name}-devel
+
+    distname        ${module}-${versiontag}
+    use_xz          yes
+    checksums       rmd160  33c3f7c68090fa16f72950ef85c20978432cc058 \
+                    sha256  f8f901de567e11fc5659402b6b827eac75505ff9c5072d8e919aa306003f8f8a
+    # set a numeric version for "5.212.0-alpha2":
+    # alpha2 = 92
+    # .96 : number of included corrective commits since the alpha2 release
+    version         ${mainPortVersion}
+    revision        96
+} else {
+    replaced_by     ${name}
+    PortGroup       obsolete 1.0
+    fetch.type      git
+    git.branch      f53b6b8cfef091770dd3dccd8371420b63d89f83
+    version         5.211.92.53
+    distname        ${module}-git
+    conflicts-append \
+                    ${name}
+}
+
+proc qt5.active_version {} {
+    global prefix
+    if {[file exists ${prefix}/bin/pkg-config]} {
+        set av [exec ${prefix}/bin/pkg-config --modversion Qt5Core]
+        return ${av}
+    } else {
+        return 0.0.0
+    }
+}
+
+# loop over the conflicting Qt5 ports list as we need to be able to use
+# conflicts-delete afterwards.
+foreach p [qt5_port_conflicts qtwebkit] {
+    conflicts-append    ${p}
+}
+# 20171218: port:qt5-kde{,-devel}-qtwebkit now depend on port:qt5-webkit
+conflicts-delete        qt5-kde-qtwebkit qt5-kde-devel-qtwebkit
+
+depends_lib-append      port:webp \
+                        port:libxml2 \
+                        port:libxslt \
+                        port:zlib \
+                        port:sqlite3
+platform darwin {
+    depends_lib-append  port:icu \
+                        port:fontconfig \
+                        port:hyphen
+    depends_build-append \
+                        port:bison \
+                        port:perl5 \
+                        port:gperf
+    # we need ruby during the build; the system copy will do just
+    # fine as long as it's at least v1.9 .
+    depends_build-append \
+                        bin:ruby:ruby19
+}
+
+if {![variant_isset minimal]} {
+    qt5.depends_component \
+                        qtdeclarative \
+                        qtxmlpatterns \
+                        qtlocation \
+                        qtmultimedia \
+                        qtsensors \
+                        qtwebchannel
+}
+
+# add the commits made to the qtwebkit-stable branch since the alpha release:
+# commit #83f9eff575568815a8e7cf0f0b28300b0171f67e
+patchfiles-append       patch-upstream-20171112.diff
+# commit 3b024218447b7838f08ccd8cf2c8515387ae41c2
+# github.com/annulen/webkit/compare/83f9eff575568815a8e7cf0f0b28300b0171f67e...3b024218447b7838f08ccd8cf2c8515387ae41c2.diff
+patchfiles-append       patch-upstream-20171221.diff
+# github.com/annulen/webkit/compare/3b024218447b7838f08ccd8cf2c8515387ae41c2...69d327017a8d700cbfc7e1120270db4d55416f41.diff
+patchfiles-append       patch-upstream-20180107.diff
+# github.com/annulen/webkit/compare/69d327017a8d700cbfc7e1120270db4d55416f41...8987f955a91b81f16f8fe1a68cd2b8fb983aa42a.diff
+patchfiles-append       patch-upstream-20180120.diff
+# github.com/annulen/webkit/commit/fbd1de045999d1e5b5dcae7ac6c1e674ac0044fe.diff
+patchfiles-append       patch-upstream-20180305.diff
+
+# make some modifications for OS X 10.9 (and earlier; untested)
+patchfiles-append       patch-allow-pre-osx1010.diff
+# # we'll want to generate .pkg files
+# # (NB: if those don't work, just provide copies in ${filespath})
+# patchfiles-append       patch-generate-pkgconfigs.diff
+
+if {[info proc cmake.save_configure_cmd] ne ""} {
+    cmake.save_configure_cmd "log too"
+}
+
+set branch              [join [lrange [split [qt5.active_version] .] 0 1] .]
+
+configure.args-append   -DENABLE_API_TESTS=OFF \
+                        -DENABLE_PRINT_SUPPORT=ON \
+                        -DENABLE_DEVICE_ORIENTATION=ON \
+                        -DENABLE_GEOLOCATION=ON \
+                        -DENABLE_JIT=ON \
+                        -DENABLE_OPENGL=ON \
+                        -DENABLE_WEBKIT2=ON \
+                        -DENABLE_QT_WEBCHANNEL=ON \
+                        -DUSE_LIBHYPHEN=ON \
+                        -DPORT=Qt
+if {${os.platform} eq "darwin"} {
+    configure.args-append \
+                        -DUSE_QT_MULTIMEDIA=ON \
+                        -DMACOS_FORCE_SYSTEM_XML_LIBRARIES=OFF \
+                        -DMACOS_USE_SYSTEM_ICU=OFF
+} else {
+    configure.args-append \
+                        -DUSE_GSTREAMER=ON
+}
+
+# WIP, basic plugin support
+patchfiles-append       patch-enable-npapi-basic.diff
+configure.args-append   -DENABLE_NETSCAPE_PLUGIN_API=ON
+
+variant docs description {build the API documentation} {}
+if {[variant_isset docs]} {
+    configure.args-append \
+                        -DGENERATE_DOCUMENTATION=ON
+}
+
+variant minimal description {build a lean & mean variant, sufficient for documentation viewing} {}
+if {[variant_isset minimal]} {
+    revision            1
+    configure.args-replace \
+                        -DENABLE_DEVICE_ORIENTATION=ON \
+                        -DENABLE_DEVICE_ORIENTATION=OFF
+    configure.args-replace \
+                        -DENABLE_GEOLOCATION=ON \
+                        -DENABLE_GEOLOCATION=OFF
+# disabling the JIT compiler gives little minimalisation while
+# the feature could be useful even in minimal builds.
+#     configure.args-replace \
+#                         -DENABLE_JIT=ON \
+#                         -DENABLE_JIT=OFF
+    configure.args-replace \
+                        -DENABLE_WEBKIT2=ON \
+                        -DENABLE_WEBKIT2=OFF
+    configure.args-replace \
+                        -DENABLE_NETSCAPE_PLUGIN_API=ON \
+                        -DENABLE_NETSCAPE_PLUGIN_API=OFF
+    configure.args-replace \
+                        -DENABLE_QT_WEBCHANNEL=ON \
+                        -DENABLE_QT_WEBCHANNEL=OFF
+    if {${os.platform} eq "darwin"} {
+        configure.args-replace \
+                        -DUSE_QT_MULTIMEDIA=ON \
+                        -DUSE_QT_MULTIMEDIA=OFF
+    } else {
+        configure.args-replace \
+                        -DUSE_GSTREAMER=ON \
+                        -DUSE_GSTREAMER=OFF
+    }
+    configure.args-append \
+                        -DENABLE_FTL_JIT=OFF \
+                        -DENABLE_INSPECTOR_UI=OFF \
+                        -DENABLE_SAMPLING_PROFILER=OFF \
+                        -DENABLE_VIDEO=OFF \
+                        -DENABLE_VIDEO_TRACK=OFF
+}
+
+configure.pre_args-delete \
+                        -DCMAKE_INSTALL_NAME_DIR="${cmake.install_prefix}/lib"
+
+configure.args-append   -DKDE_INSTALL_INCLUDEDIR=${qt_includes_dir} \
+                        -DBIN_INSTALL_DIR=${qt_bins_dir}
+
+if {${os.platform} eq "darwin"} {
+    configure.pre_args-append \
+                        -DCMAKE_INSTALL_NAME_DIR="${qt_frameworks_dir}"
+    configure.args-append \
+                        -DLIB_INSTALL_DIR=${qt_frameworks_dir} \
+                        -DMACOS_COMPATIBILITY_VERSION="${branch}.0"
+    if {${os.major} == 13} {
+        # this OS supports an almost complete build using the 10.10 SDK
+        # (the allow-pre-1010 patch takes care of deactivating unsupported bits and pieces)
+        set macosx_deployment_target 10.9
+        if {[catch {configure.sdkroot [exec xcrun --show-sdk-path -sdk macosx10.10]} result]} {
+            ui_warn "The SDK macosx10.10 is required on Mac OS X 10.9: ${result}"
+            configure.args-append \
+                        -DUSE_SYSTEM_MALLOC=ON
+        } else {
+            ui_debug "Using SDK macosx10.10 (${configure.sdkroot}): ${result}"
+        }
+    } elseif {${os.major} < 13} {
+        PortGroup       cxx11 1.0
+        configure.args-append \
+                        -DUSE_SYSTEM_MALLOC=ON
+    }
+} else {
+    configure.pre_args-append \
+                        -DCMAKE_INSTALL_NAME_DIR="${qt_libs_dir}"
+    configure.args-append \
+                        -DLIB_INSTALL_DIR=${qt_libs_dir} \
+                        -DMACOS_COMPATIBILITY_VERSION="5" \
+                        -DUSE_LD_GOLD=OFF
+}
+
+post-destroot {
+    move_in_place
+}
+
+
+# !variant_isset community
+} else {
+    # variant_isset community - deprecated community version
+
+    # prevent the qt5-kde PG from being included twice
+    namespace eval qt5 {set dont_include_twice yes}
+    PortGroup   qmake5 1.0
+    # if ${name} eq "qmake5" then dont_include_twice will already have been unset!
+    if {[info exists qt5::dont_include_twice]} {
+        namespace eval qt5 {unset dont_include_twice}
+    }
+    PortGroup   conflicts_build 1.0
+
+    PortGroup   xcodeversion 1.0
+    minimum_xcodeversions {13 6.2}
+    universal_variant no
+
+    description Qt5 WebKit Community version
+    long_description \
+                ${description} ${community_version}, QtWebEngine's deprecated predecessor. This variant is provided for comparison and testing only.
+    version     ${mainPortVersion}
+    license     LGPL-3
+
+    set branch  [join [lrange [split ${community_version} .] 0 1] .]
+    conflicts-append \
+                [qt5_port_conflicts qtwebkit]
+
+    use_xz      yes
+    master_sites \
+                http://download.qt.io/official_releases/qt/${branch}/${community_version}/submodules/ \
+                http://download.qt.io/community_releases/${branch}/${community_version}-final/
+    distname    qtwebkit-opensource-src-${community_version}
+    distfiles   ${distname}${extract.suffix}
+    checksums   rmd160  72cab2a8473801dcbbe8fc41ecf8dc45775f8b18 \
+                sha256  28a560becd800a4229bfac317c2e5407cd3cc95308bc4c3ca90dba2577b052cf
+
+    platform darwin {
+        depends_lib-append \
+                port:leveldb
+    }
+    platform linux {
+        conflicts_build-append leveldb
+    }
+
+    variant strip conflicts debug {reduce the disk footprint by stripping debug-related information (at the cost of increased build time)} {}
+
+    # Prevent conflicting definitions of Objective-C classes in C++ code
+    #    from ${qt_libs_dir}/QtCore.framework/Headers/qglobal.h
+    patchfiles-append \
+                community/patch-qtwk-objc.diff \
+                community/patch-qtwk-icu.diff
+
+    platform darwin {
+        if {${os.major} < 13} {
+            # untested adaptations taken from mcalhoun's port:qt5-qtwebkit;
+            # shouldn't be required on 10.9 and upwards (untested).
+            PortGroup   cxx11 1.0
+            configure.args-delete QMAKE_MACOSX_DEPLOYMENT_TARGET=${macosx_deployment_target}
+            # -mmacosx-version-min=10.7 sets the stdlib to libstdc++ unless -stdlib=libc++ is set
+            # QMAKE_CXXFLAGS+=-stdlib=${configure.cxx_stdlib} is insufficient since order of switches matters
+            configure.args-delete \
+                QMAKE_CXXFLAGS_CXX11-=-stdlib=libc++ \
+                QMAKE_LFLAGS_CXX11-=-stdlib=libc++
+        }
+        post-patch {
+            # qtwebkit uses glx, libXcomposite, libXrender if they can be found
+            # Ensure that test fails even if software is installed
+            foreach test { glx libXcomposite libXrender } {
+                reinplace "s|return 0;|return 0;\\\n#error turn off test|g" \
+                    ${worksrcpath}/Tools/qmake/config.tests/${test}/${test}.cpp
+            }
+        }
+    }
+
+    # QtWebKit has a dependency on jpeglib which apparently has always been somewhat
+    # problematic. There's a 2012 mod to improve reliability but that appears to have
+    # solved only pulling in the right library. The header is still expected to be
+    # on the header search path. Add ${prefix}/include globally to ensure that, in
+    # addition to defining the path to our frameworks directory.
+    configure.args              QMAKE_CXXFLAGS+="-F${qt_frameworks_dir} -I${prefix}/include"
+    default configure.dir       {${workpath}/build.community}
+    configure.pre_args          ../${worksrcdir}/WebKit.pro
+    default build.dir           {${workpath}/build.community}
+    # make sure qmake is called without unwanted arguments!
+    configure.cmd               ${qt_qmake_cmd}
+    configure.post_args-append "QMAKE_CXXFLAGS+=\"${configure.cxxflags}\""
+    # don't add the "all" target because that will interfere with generation of the interface headers
+    build.pre_args-delete       all
+#     build {
+#         if {[catch {system -W ${build.dir} "${build.cmd} -j${build.jobs} ${build.pre_args}"} result]} {
+#             # this should be redundant by now:
+#             # there's a chance the 1st build attempt will fail because not all interface
+#             # headers have been generated. We can either attempt to create via symlinks
+#             # or else run make a 2nd time and presume the build system will always
+#             # generate them then. If it does, at least they'll be exactly right.
+#             ui_msg "--->    Building ${subport} (take 2)"
+#             system -W ${build.dir} "${build.cmd} -j${build.jobs} ${build.pre_args}"
+#         }
+#     }
+    post-build {
+        if {[variant_exists strip] && [variant_isset strip]} {
+            ui_msg "--->  Stripping build"
+            catch {system -W ${build.dir} \
+                "find . -name \"*.\[ao\]\" -o -name \"*.dylib\" -o -name \"*.so\" | xargs strip -S"}
+        }
+    }
+
+    post-destroot {
+        move_in_place
+    }
+}
+
+proc move_in_place {} { uplevel {
+    if {[tbool qt5.using_kde]} {
+        if {[info exists qt_cmake_module_dir]} {
+            ui_info "fixing and moving the CMake files into ${qt_cmake_module_dir}"
+            if {[file exists ${destroot}${qt_frameworks_dir}/cmake]} {
+                set srcdir ${qt_frameworks_dir}
+                # replace the *_install_prefix path with the correct path, but "take a detour" through ${qt_dir}
+                # as an extra insurance and to show the expected Qt install location in case cmake ever finds
+                # a .cmake script that doesn't below to this Qt5 port.
+                set sedcmd "s|/../../../../|/../../../${qt_dir_rel}/|g"
+            } else {
+                set srcdir ${qt_libs_dir}
+                set sedcmd "s|/../../../../../|/../../../${qt_dir_rel}/../../|g"
+            }
+            xinstall -v -m 755 -d ${destroot}${qt_cmake_module_dir}
+            foreach d [glob -tails -nocomplain -directory ${destroot}${srcdir}/cmake *] {
+                xinstall -m 755 -d ${destroot}${qt_cmake_module_dir}/${d}
+                foreach f [glob -nocomplain -directory ${destroot}${srcdir}/cmake/${d} *.cmake] {
+                    # ${qt_frameworks_dir} is  ${qt_dir}/Library/Frameworks while
+                    # ${qt_libs_dir}       is  ${qt_dir}/lib
+                    # unless modified, cmake files will point to a directory that is too high in the directory hierarchy
+                    reinplace ${sedcmd} ${f}
+                    # these cmake modules are generated with ECM and thus use a different way
+                    # to set determine the prefix. After moving them like we just did we'll need
+                    # to correct the fallback because it's what will be used.
+                    reinplace "s|set(_IMPORT_PREFIX \"\")|set(_IMPORT_PREFIX \"${prefix}\")|g" ${f}
+                    file rename ${f} ${destroot}${qt_cmake_module_dir}/${d}/
+                }
+            }
+        }
+        platform darwin {
+            if {[file exists ${destroot}${qt_includes_dir}/QtWebKit]} {
+                # we have ended up with the headers in $prefix/include/qt5 (qt_includes_dir) which
+                # is where there should be a symlink to the framework headers dir instead. Fix that.
+                file delete -force ${destroot}${qt_frameworks_dir}/QtWebKit.framework/Versions/5/Headers
+                file delete -force ${destroot}${qt_frameworks_dir}/QtWebKitWidgets.framework/Versions/5/Headers
+                file rename ${destroot}${qt_includes_dir}/QtWebKit ${destroot}${qt_frameworks_dir}/QtWebKit.framework/Versions/5/Headers/
+                file rename ${destroot}${qt_includes_dir}/QtWebKitWidgets ${destroot}${qt_frameworks_dir}/QtWebKitWidgets.framework/Versions/5/Headers/
+                ln -s ${qt_frameworks_dir}/QtWebKit.framework/Versions/5/Headers ${destroot}${qt_includes_dir}/QtWebKit
+                ln -s ${qt_frameworks_dir}/QtWebKitWidgets.framework/Versions/5/Headers ${destroot}${qt_includes_dir}/QtWebKitWidgets
+            }
+            # very weird:
+            if {![file exists ${destroot}${qt_frameworks_dir}/QtWebKit.framework/QtWebKit]} {
+                ui_info "Missing QtWebKit.framework binary symlink; consider reporting this"
+                ln -s Versions/Current/QtWebKit ${destroot}${qt_frameworks_dir}/QtWebKit.framework/QtWebKit
+            }
+            if {![file exists ${destroot}${qt_frameworks_dir}/QtWebKitWidgets.framework/QtWebKitWidgets]} {
+                ui_info "Missing QtWebKitWidgets.framework binary symlink; consider reporting this"
+                ln -s Versions/Current/QtWebKitWidgets ${destroot}${qt_frameworks_dir}/QtWebKitWidgets.framework/QtWebKitWidgets
+            }
+        }
+    } else {
+        # this comes from `port file qt5-qtbase`
+        xinstall -d -m 0755 ${destroot}${prefix}/lib/cmake
+        foreach cmakedir [glob -type d -nocomplain -tails -directory ${destroot}${qt_libs_dir}/cmake *] {
+            xinstall -d -m 0755 ${destroot}${prefix}/lib/cmake/${cmakedir}
+            foreach cmakefile [glob -tails -directory ${destroot}${qt_libs_dir}/cmake/${cmakedir} *.cmake] {
+                ln -s ${qt_libs_dir}/cmake/${cmakedir}/${cmakefile} ${destroot}${prefix}/lib/cmake/${cmakedir}/
+            }
+        }
+
+        # if cmake finds configuration files in ${prefix}/lib/cmake, CMAKE_CURRENT_LIST_DIR expands to ${prefix}/lib/cmake/xxx
+        # cmake configuration files actually installed in ${qt_cmake_module_dir}/xxx
+        foreach cmakedir [glob -type d -nocomplain -tails -directory ${destroot}${qt_libs_dir}/cmake *] {
+            foreach cmakefile [glob -nocomplain -directory ${destroot}${qt_libs_dir}/cmake/${cmakedir} *.cmake] {
+                reinplace "s|\\\${CMAKE_CURRENT_LIST_DIR}|${qt_cmake_module_dir}/${cmakedir}|g" ${cmakefile}
+            }
+        }
+    }
+    if {${os.platform} eq "darwin"} {
+        file delete -force ${destroot}${qt_frameworks_dir}/pkgconfig
+        xinstall -m 755 -d ${destroot}${qt_pkg_config_dir}
+        xinstall -m 755 ${filespath}/Qt5WebKit.pc ${destroot}${qt_pkg_config_dir}
+        xinstall -m 755 ${filespath}/Qt5WebKitWidgets.pc ${destroot}${qt_pkg_config_dir}
+        reinplace "s|@PREFIX@|${prefix}|g" \
+                     ${destroot}${qt_pkg_config_dir}/Qt5WebKit.pc \
+                     ${destroot}${qt_pkg_config_dir}/Qt5WebKitWidgets.pc
+        reinplace "s|@FRAMEWORKSDIR@|${qt_frameworks_dir}|g" \
+                     ${destroot}${qt_pkg_config_dir}/Qt5WebKit.pc \
+                     ${destroot}${qt_pkg_config_dir}/Qt5WebKitWidgets.pc
+        reinplace "s|@INCLUDESDIR@|${qt_includes_dir}|g" \
+                     ${destroot}${qt_pkg_config_dir}/Qt5WebKit.pc \
+                     ${destroot}${qt_pkg_config_dir}/Qt5WebKitWidgets.pc
+        if {[info exists targetversion]} {
+            reinplace "s|@VERSION@|${targetversion}|g" \
+                     ${destroot}${qt_pkg_config_dir}/Qt5WebKit.pc \
+                     ${destroot}${qt_pkg_config_dir}/Qt5WebKitWidgets.pc
+        }
+    } elseif {[file exists ${destroot}${qt_libs_dir}/pkgconfig/Qt5WebKit.pc]} {
+        file rename ${destroot}${qt_libs_dir}/pkgconfig/Qt5WebKit.pc ${destroot}${qt_pkg_config_dir}/Qt5WebKit.pc
+        file rename ${destroot}${qt_libs_dir}/pkgconfig/Qt5WebKitWidgets.pc ${destroot}${qt_pkg_config_dir}/Qt5WebKitWidgets.pc
+    }
+} }
+
+# optional support for HFS-compression of the source and build dirs
+if {[info exists qt5::currentportgroupdir] && [file exists ${qt5::currentportgroupdir}/compress_workdir-1.0.tcl]} {
+    PortGroup       compress_workdir 1.0
+}

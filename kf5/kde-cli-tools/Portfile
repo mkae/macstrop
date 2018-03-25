@@ -23,19 +23,20 @@ pre-configure {
 
 set kf5.project     kde-cli-tools
 set kf5.virtualPath plasma
+set kf5.no_configure_log yes
 PortGroup           kf5 1.1
 # kf5.use_latest      plasma
 name                kf5-cli-tools
 
-maintainers         gmail.com:rjvbertin mk openmaintainer
+maintainers         gmail.com:rjvbertin openmaintainer
 
 installs_libs       no
 
 description         KF5 CLI utilities
 long_description    KF5 command line interface utilities.
-# 5.10.2
-checksums           rmd160  2af1a327cf13f9201b44970af2e2500a6f2fd023 \
-                    sha256  10646f2030c28d756d718f9c1da35d341f1a3256cc869ba37ccf2a105f773b34
+# 5.11.1
+checksums           rmd160  73494bd6639215d9281594756f6edc78e124d019 \
+                    sha256  4c205e6a9cff7283ca727d12827c983d456f49948b82089bba8fa806fdf52736
 
 patchfiles-append \
                     patch-preserve-window-icon.diff
@@ -81,10 +82,10 @@ post-destroot {
     puts ${fp} "#!/bin/sh\n"
     puts ${fp} "# This script wraps cmake with the arguments for building KF5 software in MacPorts style\n"
     puts ${fp} "if \[ \"\$\{CC\}\" = \"\" \] \;then"
-    puts ${fp} "    CC=${configure.cc}"
+    puts ${fp} "    export CC=${configure.cc}"
     puts ${fp} "fi"
     puts ${fp} "if \[ \"\$\{CXX\}\" = \"\" \] \;then"
-    puts ${fp} "    CXX=${configure.cxx}"
+    puts ${fp} "    export CXX=${configure.cxx}"
     puts ${fp} "fi\n"
     if {[file exists ${workpath}/.cppflags]} {
         close ${fp}
@@ -93,7 +94,19 @@ post-destroot {
     }
 
     puts ${fp} "if \[ \"\$\{1\}\" = \"-E\" \] \;then"
-        puts -nonewline ${fp} "    exec ${configure.cmd} \"\$@\""
+        puts ${fp} "    case \$2 in"
+        puts ${fp} "        server|capabilities)"
+        puts ${fp} "            if \[ \"\$2\" = \"server\" -a \"`basename \$0`\" = \"cmake-kf5-mp_noserver\" \] \;then"
+        puts ${fp} "                # emulate the error message from an older CMake version"
+        puts ${fp} "                (   echo \"CMake Error: cmake version 3.0.1 (faked to avoid server mode)\""
+        puts ${fp} "                    echo \"Usage: /opt/local/bin/cmake -E \[command\] \[arguments ...\]\""
+        puts ${fp} "                ) 1>&2"
+        puts ${fp} "                exit 1"
+        puts ${fp} "            fi"
+        puts ${fp} "            exec ${configure.cmd} \"\$@\""
+        puts ${fp} "            \;\;"
+        puts ${fp} "        *)"
+        puts -nonewline ${fp} "            exec ${configure.cmd} \"\$@\""
         if {[info exists configure.pre_args]} {
             puts -nonewline ${fp} " [join ${configure.pre_args}]"
         }
@@ -104,6 +117,7 @@ post-destroot {
             puts -nonewline ${fp} " [string map [list ${worksrcpath} ""] [join ${configure.post_args}]]"
         }
         puts ${fp} ""
+        puts ${fp} "    esac"
     puts ${fp} "else"
         puts -nonewline ${fp} "    exec ${configure.cmd}"
         if {[info exists configure.pre_args]} {
@@ -119,6 +133,7 @@ post-destroot {
     puts ${fp} "fi"
     close ${fp}
     system "chmod 755 ${cmakewrappername}"
+    ln -s [file tail ${cmakewrappername}] ${cmakewrappername}_noserver
 }
 
 livecheck.type      regex

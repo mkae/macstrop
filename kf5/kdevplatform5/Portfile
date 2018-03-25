@@ -44,8 +44,8 @@ if {${subport} eq "${name}-devel"} {
 #     git.branch      576760bff6b91f3ea8121842a4d56036151a0f79
     ## switch to the 5.1 branch for now
     epoch           5.1
-    git.branch      fb704c7745b534b62c567e637adecc99e89fdeb2
-    set release     5.1.2
+    git.branch      bf8ee584b01c438032bfaf75af06f66c8183ea64
+    set release     5.1.2.3
     version         ${release}
     worksrcdir      ${name}-5
     distname        ${name}-5
@@ -59,13 +59,13 @@ if {${subport} eq "${name}-devel"} {
     description     ${description}
     long_description \
                     ${long_description}
-    version         5.1.1
+    version         5.1.2
     set branch      [join [lrange [split ${version} .] 0 1] .]
     use_xz          yes
     master_sites    http://download.kde.org/stable/kdevelop/${version}/src
     distname        ${kf5.project}-${version}
-    checksums       rmd160  bdc1b666d473337271b4f31cd8aa2983679e8d49 \
-                    sha256  3159440512b1373c1a4b35f401ba1f81217de9578372b45137af141eeda6e726
+    checksums       rmd160  fe8920e43a95cbf2b805f477464e42632aca51f7 \
+                    sha256  e622ddad552a678baaf1166d5cbdc5fd1192d2324300c52ef2d25f1c6778664a
     set PPREFIX     "devel/"
     set PPREFIX51   "devel/"
 }
@@ -105,6 +105,8 @@ platform darwin {
 #Binaries do not link to openssl
 license_noconflict  openssl
 
+patch.pre_args      -Np1
+
 if {${subport} eq "${name}-translations"} {
     # extract only the translations and CMake stuff
     extract.post_args-append \
@@ -119,10 +121,10 @@ if {${subport} eq "${name}-translations"} {
             # WIP so a -p1 patch which also contains part of another patch that is under upstream review.
             # apply with system and ignore the expected error
             ui_info "--->  Applying WIP patch patch-commit-msg-width.diff"
-            catch {system -W ${worksrcpath} "patch -Np1 -i ${filespath}/patch-commit-msg-width.diff"}
+            catch {system -W ${worksrcpath} "patch -Np2 -i ${filespath}/patch-commit-msg-width.diff"}
             ui_info "--->  Applying WIP patch devel/patch-diff-context4.diff"
 #             https://phabricator.kde.org/D4981
-            catch {system -W ${worksrcpath} "patch -Np1 -i ${filespath}/devel/patch-diff-context4.diff"}
+            catch {system -W ${worksrcpath} "patch -Np2 -i ${filespath}/devel/patch-diff-context4.diff"}
         }
     }
 
@@ -206,6 +208,12 @@ if {${subport} eq "${name}-translations"} {
 
     # https://bugs.kde.org/show_bug.cgi?id=383688
     patchfiles-append   ${PPREFIX51}/patch-problemreport-focus.diff
+
+    # disable monitoring directories for change on Mac: it is unreliable
+    # at best and comes with a potentially huge cost.
+    # https://phabricator.kde.org/D7742
+    # https://phabricator.kde.org/D7745
+    patchfiles-append   patch-defer-parsing+dirwatching.diff
 
     variant apidocs description {Generate the API documentation} {}
     if {![variant_isset apidocs]} {
