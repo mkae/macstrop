@@ -397,8 +397,7 @@ post-destroot {
     }
 }
 
-proc move_in_place {} {}
-proc move_in_place_dum {} { uplevel {
+proc move_in_place {} { uplevel {
     if {[tbool qt5.using_kde]} {
         if {[info exists qt_cmake_module_dir]} {
             ui_info "fixing and moving the CMake files into ${qt_cmake_module_dir}"
