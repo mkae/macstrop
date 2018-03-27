@@ -1,0 +1,51 @@
+#!/bin/sh
+
+PORT=""
+OPTS=""
+
+while [ $# != 0 ] ;do
+	case $1 in
+		--editor)
+			shift
+			EDITOR="$1"
+			if [ "${EDITOR}" = "native" ] ;then
+				EDITOR="open -t"
+			fi
+			;;
+		-*|+*)
+			OPTS="${OPTS} $1"
+			;;
+		*)
+			PORT="${PORT} $1"
+			;;
+	esac
+	shift
+done
+
+# this script may have to be executed as root (sudo), which may mean it doesn't
+# inherit the user's PATH. We expect `port-update-state-checksum` to live in
+# the same directory as us.
+DNAME="`dirname $0`"
+
+if [ "${EDITOR}" != "" -a "${PORT}" != "" ] ;then
+	for p in $PORT ;do
+		if [ "${_WD_port}" != "${p}" ] ;then
+			pWD="`port work ${p}`" ; export pWD
+			#pPFILE="`port dir ${p} 2>/dev/null`/Portfile" ; export pPFILE
+			pPFILE="`port file ${p} 2>/dev/null`" ; export pPFILE
+			_WD_port="${p}" ; export _WD_port
+		fi
+		STATEFILE=${pWD}/.macports.${p}.state
+		if [ -e ${STATEFILE} ] ;then
+			${DNAME}/port-update-state-checksum ${p}
+			#echo ${EDITOR} ${OPTS} ${pWD}/.macports.${p}.state
+			${EDITOR} ${OPTS} ${STATEFILE}
+		fi
+	done
+else
+	echo "Usage: `basename $0` [--editor app] [-options] <port1> [port2 [port3 [...]]]"
+	echo "This utility allows you to edit the statefile from a port's work directory"
+	echo "Use --editor native to invoke the default native text editor"
+	echo "Remember to quote spaces in the editor app name or in options that take an argument"
+	echo "	(e.g. `basename $0` \"-t tabsize\") foo"
+fi

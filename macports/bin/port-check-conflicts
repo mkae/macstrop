@@ -1,0 +1,173 @@
+#!/bin/bash
+
+PORT=""
+OPTS=""
+INVERSE=0
+
+while [ $# != 0 ] ;do
+    case $1 in
+        -v)
+            INVERSE=1
+            ;;
+        -*)
+            OPTS="${OPTS} $1"
+            ;;
+        *)
+            PORT="${PORT} $1"
+            ;;
+    esac
+    shift
+done
+
+DNAME="`dirname $0`"
+
+if [ "${TMPDIR}" = "" ] ;then
+    TMPDIR="/tmp"
+fi
+export PPROV="${TMPDIR}/port-provides-$$.sh"
+
+CleanUp() {
+    rm -f ${PPROV}
+    exit $1
+}
+
+trap CleanUp 1
+trap CleanUp 2
+trap CleanUp 15
+
+declare -a DUPSarray
+declare -a ORGSarray
+
+make_pprov_pre () {
+    head -20 `which port` > ${PPROV}
+    chmod 700 ${PPROV}
+    cat >> ${PPROV} <<- EOF
+# cherry-picked shamelessly from `which port`
+package require Tclx
+package require macports
+package require Pextlib 1.0
+
+array set ui_options        {} 
+array set global_options    {}
+array set global_variations {}
+
+proc macports::normalise { filename } {
+    set prefmap [list [file dirname [file normalize "\${macports::prefix}/foo"]] \${macports::prefix}]
+    return [string map \${prefmap} [file normalize \$filename]]
+}
+
+proc action_provides { portlist } {
+    # In this case, portname is going to be used for the filename... since
+    # that is the first argument we expect... perhaps there is a better way
+    # to do this?
+    if { ![llength \$portlist] } {
+        ui_error "Please specify a filename to check which port provides that file."
+        return 1
+    }
+    foreach filename \$portlist {
+        set file [macports::normalise \$filename]
+        if {[file exists \$file] || ![catch {file type \$file}]} {
+            if {![file isdirectory \$file] || [file type \$file] eq "link"} {
+                set port [registry::file_registered \$file] 
+                if { \$port != 0 } { 
+                    puts "\$port"
+                } else {
+                    puts "not_by_MacPorts"
+                }
+            } else {
+                puts "is_a_directory"
+            }
+        } else {
+            puts "does_not_exist"
+        }
+    }
+    registry::close_file_map
+
+    return 0
+}
+
+# Initialise mport
+# This must be done following parse of global options, as some options are
+# evaluated by mportinit.
+if {[catch {mportinit ui_options global_options global_variations} result]} {
+    puts \$::errorInfo
+    fatal "Failed to initialise MacPorts, \$result"
+}
+
+EOF
+}
+
+if [ "${PORT}" != "" ] ;then
+    for p in $PORT ;do
+        OK=0
+        if [ -d "${p}" ] ;then
+            pWD="${p}" ; export pWD
+            cd ${pWD}
+            OK=1
+        else
+            if [ "${_WD_port}" != "${p}" ] ;then
+                pWD="`port work ${p}`" ; export pWD
+                _WD_port="${p}" ; export _WD_port
+            fi
+            if [ -e ${pWD}/destroot ] ;then
+                echo "cd ${pWD}/destroot"
+                cd ${pWD}/destroot
+                OK=1
+            fi
+        fi
+        if [ ${OK} = 1 ] ;then
+            DUPSarray=()
+            ORGSarray=()
+            FILES=`find . -type f -o -type f`
+            for f in $FILES ;do
+                g="`echo \"${f}\" | sed -e 's|.||'`"
+                if [ -e "${g}" ] ;then
+                    if [ ${INVERSE} = 0 ] ;then
+                        DUPSarray+=(${g})
+                        ORGSarray+=(${f})
+                    fi
+                else
+                    if [ ${INVERSE} = 1 ] ;then
+                        echo "${g} doesn't exist yet"
+                    fi
+                fi
+            done
+            if [ ${#DUPSarray[*]} != 0 ] ;then
+                echo "${#DUPSarray[*]} files already exist, checking if any don't belong to ${p}"
+
+                # construct a temporary tcl script
+                make_pprov_pre
+                echo "set flist {${DUPSarray[*]}}" >> ${PPROV}
+                echo "action_provides \${flist}" >> ${PPROV}
+                echo "mportshutdown" >> ${PPROV}
+
+                # fetch the ports that provide the various dupes found. Do this in one fell swoop
+                # because that's a lot (10x or more) faster than calling `port provides` repeatedly.
+                # Replace the human-readabability text to keep just the port names and placeholder text
+                # without spaces for files not belonging to a port.
+                # We use the temporary tcl script instead of `port provides` because that allows
+                # argument lines of arbitrary length
+                PROVIDERS=(`${PPROV}`)
+                DUPS=""
+                for idx in $(seq 0 $((${#DUPSarray[*]} - 1))) ;do
+                    f="${ORGSarray[${idx}]}"
+                    g="${DUPSarray[${idx}]}"
+                    provider="${PROVIDERS[${idx}]}"
+                    if [ "${provider}" != "${p}" ] ;then
+                        echo "${g} (#${idx}) already exists"
+                        echo -e "\tprovided by: ${provider}"
+                        ls -l ${f} ${g}
+                        DUPS="${DUPS}\n${g}"
+                    fi
+                done
+                if [ "${DUPS}" != "" ] ;then
+                    echo -e ${DUPS}
+                    echo
+                fi
+            fi
+        fi
+    done
+    CleanUp 0
+else
+    echo "Usage: `basename $0` [-options] <port1> [port2 [port3 [...]]]"
+fi

@@ -1,0 +1,117 @@
+#!/bin/bash
+
+PORT=""
+PHASE=""
+
+while [ $# != 0 ] ;do
+	case $1 in
+		--all)
+			PHASE="fetch checksum extract patch-all configure build-all destroot test"
+			;;
+		-*)
+			f=${1:1}
+			case ${f} in
+				fetch|archivefetch|checksum|extract|patch|patch-all|configure|configure-all|build|build-all|destroot|test)
+					PHASE="${PHASE} $f"
+					;;
+				*)
+					echo "${f}: invalid install phase"
+					exit 1
+					;;
+			esac
+			;;
+		*)
+			PORT="${PORT} $1"
+			;;
+	esac
+	shift
+done
+
+# this script may have to be executed as root (sudo), which may mean it doesn't
+# inherit the user's PATH. We expect `port-update-state-checksum` to live in
+# the same directory as us.
+DNAME="`dirname $0`"
+
+if [ "${PORT}" != "" -a "${PHASE}" != "" ] ;then
+	for p in $PORT ;do
+		if [ "${_WD_port}" != "${p}" ] ;then
+			pWD="`port work ${p}`" ; export pWD
+			#pPFILE="`port dir ${p} 2>/dev/null`/Portfile" ; export pPFILE
+			pPFILE="`port file ${p} 2>/dev/null`" ; export pPFILE
+			_WD_port="${p}" ; export _WD_port
+		fi
+		STATEFILE=${pWD}/.macports.${p}.state
+		if [ -e ${STATEFILE} ] ;then
+			# let's protect the user from the effects of forgetting port's -o option!
+			${DNAME}/port-update-state-checksum ${p}
+			for f in ${PHASE} ;do
+				case ${f} in
+					patch-all)
+						echo "Rewinding patch phase completely"
+						cp -p ${STATEFILE} ${STATEFILE}.bak
+						sed -e "/patch: .*/d" \
+								-e "/target: org\.macports\.patch/d" < ${STATEFILE}.bak > ${STATEFILE}
+						;;
+					patch)
+						echo "Rewinding patch phase up to the last patch applied successfully"
+						cp -p ${STATEFILE} ${STATEFILE}.bak
+						sed -e "/target: org\.macports\.${f}.*/d" < ${STATEFILE}.bak > ${STATEFILE}
+						;;
+					configure-all)
+						echo "Rewinding the configure phase and removing cache from out-of-source build.dir"
+						cp -p ${STATEFILE} ${STATEFILE}.bak
+						sed -e "/target: org\.macports\.configure.*/d" < ${STATEFILE}.bak > ${STATEFILE}
+						rm -f ${pWD}/build{,-i386,-x86_64}/{CMakeCache.txt,config.status,Makefile,.qmake.cache,.qmake.stash}
+						rm -rf ${pWD}/build{,-i386,-x86_64}/CMakeFiles/3.*
+						;;
+					build-all)
+						echo "Rewinding the configure and build phases and removing the out-of-source build.dir"
+						cp -p ${STATEFILE} ${STATEFILE}.bak
+						sed -e "/target: org\.macports\.configure.*/d" -e "/target: org\.macports\.build.*/d" < ${STATEFILE}.bak > ${STATEFILE}
+						for bd in ${pWD}/build{,-i386,-x86_64} ;do
+							if [ -e ${bd} ] ;then
+								if [ -O ${bd} ] ;then
+									rm -rf ${bd}
+								else
+									echo "CHECKME - sudo rm -rf ${bd}"
+								fi
+							fi
+						done
+						;;
+					destroot)
+						echo "Rewinding the destroot phase and removing the destroot directory"
+						cp -p ${STATEFILE} ${STATEFILE}.bak
+						sed -e "/target: org\.macports\.destroot/d" \
+								-e "/target: org\.macports\.archivefetch/d" < ${STATEFILE}.bak > ${STATEFILE}
+						for dd in ${pWD}/destroot* ;do
+							if [ -e ${dd} ] ;then
+								if [ -O ${dd} ] ;then
+									rm -rf ${dd}
+								else
+									sudo rm -rf ${dd}
+								fi
+							fi
+						done
+						;;
+					*)
+						echo "Rewinding the ${f} phase"
+						cp -p ${STATEFILE} ${STATEFILE}.bak
+						sed -e "/target: org\.macports\.${f}.*/d" < ${STATEFILE}.bak > ${STATEFILE}
+						;;
+				esac
+			done
+			rm -f ${STATEFILE}.bak
+		fi
+	done
+else
+	echo -e "Usage: `basename $0` <-phase1> [<-phase2>] <port1> [port2 [port3 [...]]]"
+	echo -e "This utility \"rewinds\" the specified phases in a port's build/install procedure, allowing them to be repeated"
+	echo -e "Special cases:"
+	echo -e "\t-destroot: also rewinds archivefetch, and causes the destroot directory to be removed,"
+	echo -e "\t           so no \"file already exists\" conflicts can occur"
+	echo -e "\t-patch: allows the patch phase to be repeated without resetting any information on"
+	echo -e "\t        what patches were applied successfully"
+	echo -e "\t-patch-all: allows the patch phase to be repeated completely, all patchfiles included"
+	echo -e "\t-configure-all: also removes configure state files when the port uses an out-of-tree build.dir called \"build\""
+	echo -e "\t-build-all: also rewinds the configure phase and the out-of-tree build.dir called \"build\""
+fi
